@@ -6,15 +6,13 @@ public class AppState
 {
     private static IJSRuntime? _js;
     
-    // 1. 必须有的事件
+
     public event Action? OnChange;
+    public event Action? OnCurrentPageChanged;
     private void NotifyStateChanged() => OnChange?.Invoke();
     public static void Init(IJSRuntime jsRuntime) => _js = jsRuntime;
-    // ==========================================
-    //  这里是核心技巧：把变量“包装”一下
-    // ==========================================
     public string AppName { get; set; } = AppInfo.Current.Name;
-    // 第一步：定义一个私有的“小金库”存数据
+
     private string _currentPage = "home";
     private bool _sidebarIsExpanded = false;
     private bool _isDarkTheme;
@@ -34,7 +32,7 @@ public class AppState
     }
 
 
-    // 第二步：定义公开的“柜台”
+
     public string CurrentPage
     {
         get => _currentPage;
@@ -42,6 +40,7 @@ public class AppState
         {
 
             _currentPage = value;
+            OnCurrentPageChanged?.Invoke();
             NotifyStateChanged();
 
         }

@@ -60,8 +60,9 @@
     // 核心逻辑：监听 Query 参数的变化
     protected override async Task OnParametersSetAsync()
     {
-        if (string.IsNullOrWhiteSpace(Query))
+        if (string.IsNullOrWhiteSpace(Query) || Query.Contains('\''))
         {
+            // 清空现有的搜索结果并隐藏面板
             results = null;
             return;
         }

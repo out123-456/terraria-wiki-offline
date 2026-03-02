@@ -3,7 +3,7 @@
 
 @if (!string.IsNullOrWhiteSpace(Query))
 {
-    <div class="search-overlay" @onclick="ClosePanel"></div>
+    <div class="search-overlay @(isSearching ? "searching-lock" : "")" @onclick="ClosePanel"></div>
 
     <div class="search-popup-panel">
         @if (isSearching)
@@ -24,7 +24,7 @@
                             @item.Title
                             @if (!string.IsNullOrEmpty(item.RedirectTo))
                             {
-                                <span style="color: #888; font-size: 0.8em; margin-left: 8px;">
+                                <span style="color: var(--text-secondary); font-size: 0.8em; margin-left: 12px;">
                                     ➔ 跳转至: @item.RedirectTo
                                 </span>
                             }
@@ -66,14 +66,14 @@
             return;
         }
 
-        // 防抖逻辑：用户连续打字时，延迟 300 毫秒再查数据库
+        // 防抖逻辑：用户连续打字时，延迟毫秒再查数据库
         debounceCts?.Cancel();
         debounceCts = new CancellationTokenSource();
         var token = debounceCts.Token;
 
         try
         {
-            await Task.Delay(300, token);
+            await Task.Delay(500, token);
             await ExecuteSearchAsync(Query);
         }
         catch (TaskCanceledException)
@@ -106,6 +106,10 @@
 
     private async Task ClosePanel()
     {
+        if (isSearching)
+        {
+            return;
+        }
         await OnCloseRequested.InvokeAsync();
     }
 }

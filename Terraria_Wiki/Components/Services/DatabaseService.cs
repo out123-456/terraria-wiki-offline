@@ -262,61 +262,100 @@ public class DatabaseService
 
         // 2. 终极融合 SQL
         string sql = @"
-        SELECT 
-            Title, 
-            RedirectTo, 
-            Snippet,
-            MIN(Priority) AS MinPriority -- 极其重要：触发 SQLite 的特性，保证提取到优先级最高的行的数据
-        FROM (
-            -- 【第一梯队 A】: WikiPage 标题匹配
+            WITH 
+            -- 【步骤 1：第一梯队 A】先查标题表（极快）
+            TitleMatches AS (
+                SELECT Title, '' AS RedirectTo, 1 AS Priority, 0 AS RankScore
+                FROM WikiPage 
+                WHERE Title LIKE ?
+                LIMIT 50
+            ),
+
+            -- 【步骤 2：第一梯队 B】查重定向表（带短路判定）
+            RedirectMatches AS (
+                SELECT FromName AS Title, 
+                       -- 智能去除 # 及后续锚点文字
+                       CASE WHEN INSTR(ToTarget, '#') > 0 THEN SUBSTR(ToTarget, 1, INSTR(ToTarget, '#') - 1) ELSE ToTarget END AS RedirectTo, 
+                       1 AS Priority, 0 AS RankScore
+                FROM WikiRedirect 
+                WHERE FromName LIKE ?
+                  -- ⚔️ 核心短路逻辑：如果 TitleMatches 已经够 50 个了，这句直接为 FALSE，整段查询瞬间跳过
+                  AND (SELECT COUNT(*) FROM TitleMatches) < 50
+                LIMIT 50
+            ),
+
+            -- 【步骤 3：合并第一梯队】把它俩拼起来，并做一次内部去重统计
+            Tier1Pool AS (
+                SELECT * FROM TitleMatches
+                UNION ALL
+                SELECT * FROM RedirectMatches
+            ),
+            Tier1Unique AS (
+                SELECT Title, MIN(RedirectTo) AS RedirectTo, MIN(Priority) AS Priority, MIN(RankScore) AS RankScore
+                FROM Tier1Pool
+                GROUP BY Title
+            ),
+
+            -- 【步骤 4：第二梯队】FTS5 全文搜索（带短路判定）
+            FtsMatches AS (
+                SELECT Title, '' AS RedirectTo, 2 AS Priority, rank AS RankScore,
+                       -- FTS 自己生成的高亮摘要先存起来
+                       snippet(WikiSearchIndex, 1, '<mark class=""search-highlight"">', '</mark>', '...', 60) AS FtsSnippet
+                FROM WikiSearchIndex 
+                WHERE WikiSearchIndex MATCH ?
+                  -- ⚔️ 核心短路逻辑：如果第一梯队已经凑满 50 个词条，彻底封死 FTS5 的调用
+                  AND (SELECT COUNT(*) FROM Tier1Unique) < 50
+                LIMIT 50
+            ),
+
+            -- 【步骤 5：大一统】把第一梯队和 FTS5 结果混装
+            AllRawMatches AS (
+                SELECT Title, RedirectTo, Priority, RankScore, '' AS FtsSnippet FROM Tier1Unique
+                UNION ALL
+                SELECT Title, RedirectTo, Priority, RankScore, FtsSnippet FROM FtsMatches
+            ),
+
+            -- 【步骤 6：全局去重与终极排序】
+            FinalTop50 AS (
+                SELECT 
+                    Title, 
+                    MIN(RedirectTo) AS RedirectTo, 
+                    MIN(Priority) AS MinPriority,
+                    MIN(RankScore) AS FinalRankScore,
+                    MAX(FtsSnippet) AS FtsSnippet -- 把 FTS 的摘要带着
+                FROM AllRawMatches
+                GROUP BY Title
+                ORDER BY 
+                    MinPriority ASC, 
+                    CASE MinPriority WHEN 1 THEN LENGTH(Title) ELSE MIN(RankScore) END ASC,
+                    Title ASC
+                LIMIT 50
+            )
+
+            -- 【最终步：精准制导提取摘要】
+            -- 只有这胜出的 50 位天之骄子，才有资格去取摘要！
             SELECT 
-                Title, 
-                '' AS RedirectTo, 
-                -- 子查询：去 FTS5 表里找这个标题对应的纯文本，截取前 60 个字符作为开头摘要
-                COALESCE((SELECT SUBSTR(PlainContent, 1, 60) || '...' FROM WikiSearchIndex WHERE Title = WikiPage.Title LIMIT 1), '') AS Snippet, 
-                1 AS Priority,
-                0 AS RankScore
-            FROM WikiPage 
-            WHERE Title LIKE ?
-
-            UNION ALL
-
-            -- 【第一梯队 B】: WikiRedirect 别名/重定向匹配
-            SELECT 
-                FromName AS Title, 
-                ToTarget AS RedirectTo, 
-                -- 子查询：去 FTS5 表里找【目标词条(ToTarget)】的纯文本，截取开头
-                COALESCE((SELECT SUBSTR(PlainContent, 1, 60) || '...' FROM WikiSearchIndex WHERE Title = WikiRedirect.ToTarget LIMIT 1), '') AS Snippet, 
-                1 AS Priority,
-                0 AS RankScore
-            FROM WikiRedirect 
-            WHERE FromName LIKE ?
-
-            UNION ALL
-
-            -- 【第二梯队】: WikiSearchIndex 正文 FTS5 全文搜索
-            SELECT 
-                Title, 
-                '' AS RedirectTo, 
-                snippet(WikiSearchIndex, 1, '<mark class=""search-highlight"">', '</mark>', '...', 15) AS Snippet, 
-                2 AS Priority,
-                rank AS RankScore
-            FROM WikiSearchIndex 
-            WHERE WikiSearchIndex MATCH ?
-        )
-        GROUP BY Title
-        ORDER BY 
-            -- 1. 先按梯队排：梯队 1（标题/别名）排在前面
-            MinPriority ASC, 
-            
-            -- 2. 梯队内排序：梯队 1 按标题/别名长度排，梯队 2 按相关度排
-            CASE MinPriority
-                WHEN 1 THEN LENGTH(Title)
-                ELSE MIN(RankScore)
-            END ASC,
-            
-            Title ASC
-        LIMIT 50;
+                f.Title, 
+                f.RedirectTo,
+                CASE 
+                    -- 如果是第一梯队（靠标题命中的），去原表切前 60 个字当摘要
+                    WHEN f.MinPriority = 1 THEN 
+                        COALESCE((
+                            SELECT SUBSTR(PlainContent, 1, 60) || '...' 
+                            FROM WikiSearchIndex 
+                            -- 使用清理过 # 的标题去找正文
+                            WHERE Title = CASE WHEN f.RedirectTo = '' THEN f.Title ELSE f.RedirectTo END 
+                            LIMIT 1
+                        ), '暂无描述...')
+                    -- 如果是第二梯队，直接用刚才 FTS 自带的高亮摘要
+                    ELSE f.FtsSnippet 
+                END AS Snippet,
+                f.MinPriority
+            FROM FinalTop50 f
+            ORDER BY 
+                f.MinPriority ASC, 
+                CASE f.MinPriority WHEN 1 THEN LENGTH(f.Title) ELSE f.FinalRankScore END ASC,
+                f.Title ASC;
     ";
 
         // 传入参数 (对应 WikiPage, WikiRedirect, WikiSearchIndex 的三个问号)

@@ -37,31 +37,74 @@
 </div>
 
 @code {
+
 	private Virtualize<HistoryTimelineItem>? _virtualizeComponent;
+	protected override void OnInitialized()
+	{
+		//订阅 Topbar 传来的搜索事件
+		AppState.OnSearchQueryChanged += HandleSearchChanged;
+	}
+
+	public void Dispose()
+	{
+		AppState.OnSearchQueryChanged -= HandleSearchChanged;
+	}
 
 	private async ValueTask<ItemsProviderResult<HistoryTimelineItem>> LoadPages(ItemsProviderRequest request)
 	{
-		// 1. 获取数据库总记录数 (告诉 Virtualize 滚动条该多长)
-		var totalCount = await App.ContentDb.GetCountAsync<WikiHistory>();
+		var query = AppState.SearchQuery?.Trim();
 
-		// 2. 获取当前请求的分页数据
-		var rawItems = await App.ContentDb.GetWikiHistoryPagedAsync(request.StartIndex, request.Count);
-
-		// 3. 关键点：获取当前块的前一条数据，用于跨块比对日期
+		int totalCount;
+		List<WikiHistory> rawItems;
 		WikiHistory? previousItem = null;
-		if (request.StartIndex > 0)
+
+		if (string.IsNullOrEmpty(query))
 		{
-			// 往前查 1 条数据
-			var prevList = await App.ContentDb.GetWikiHistoryPagedAsync(request.StartIndex - 1, 1);
-			previousItem = prevList.FirstOrDefault();
+			// ================== 无搜索词：正常加载 ==================
+			totalCount = await App.ContentDb.GetCountAsync<WikiHistory>();
+			rawItems = await App.ContentDb.GetWikiHistoryPagedAsync(request.StartIndex, request.Count);
+
+			if (request.StartIndex > 0)
+			{
+				var prevList = await App.ContentDb.GetWikiHistoryPagedAsync(request.StartIndex - 1, 1);
+				previousItem = prevList.FirstOrDefault();
+			}
+		}
+		else
+		{
+			// ================== 有搜索词：带过滤加载 ==================
+			// 使用我们之前封装好的通用简化版过滤方法
+			// 假设历史表搜的是 WikiTitle，按 ReadAt 降序排
+			totalCount = await App.ContentDb.GetFilteredCountAsync<WikiHistory>("WikiTitle", query);
+
+			rawItems = await App.ContentDb.GetFilteredPagedAsync<WikiHistory>(
+				searchColumn: "WikiTitle",
+				keyword: query,
+				orderByColumn: "ReadAt",
+				startIndex: request.StartIndex,
+				count: request.Count,
+				isDesc: true
+			);
+
+			// 【极其关键】：这里查的“上一条”也必须是带过滤条件的上一条！
+			if (request.StartIndex > 0)
+			{
+				var prevList = await App.ContentDb.GetFilteredPagedAsync<WikiHistory>(
+					searchColumn: "WikiTitle",
+					keyword: query,
+					orderByColumn: "ReadAt",
+					startIndex: request.StartIndex - 1,
+					count: 1,
+					isDesc: true
+				);
+				previousItem = prevList.FirstOrDefault();
+			}
 		}
 
+		// ================== 核心时间线逻辑 (合并复用，毫不干涉) ==================
 		var resultItems = new List<HistoryTimelineItem>();
-
-		// 初始化比对基准：如果是第一页的第一条，基准为空；否则以上一条数据的日期为基准
 		string lastDateKey = previousItem != null ? GetDateLabel(previousItem.ReadAt) : "";
 
-		// 4. 遍历当前块，判断谁需要顶着“日期标题”
 		foreach (var item in rawItems)
 		{
 			var currentLabel = GetDateLabel(item.ReadAt);
@@ -77,9 +120,12 @@
 			lastDateKey = currentLabel;
 		}
 
-		// 返回包装好的数据
+
 		return new ItemsProviderResult<HistoryTimelineItem>(resultItems, totalCount);
 	}
+
+
+
 
 	private string GetDateLabel(DateTime dt)
 	{
@@ -92,10 +138,28 @@
 	private async void ClearHistory()
 	{
 		bool isConfirmed = await Application.Current.MainPage?.DisplayAlert("提示", "确认清空历史记录吗？", "确定","取消");
-		await App.ContentDb.DeleteItemsAsync<WikiHistory>();
-		await _virtualizeComponent?.RefreshDataAsync();
-		StateHasChanged();
+		if (isConfirmed)
+		{
+			await App.ContentDb.DeleteItemsAsync<WikiHistory>();
+			await _virtualizeComponent?.RefreshDataAsync();
+			StateHasChanged();
+		}
+
 	}
+
+	private async void HandleSearchChanged()
+	{
+		// 4. 当搜索词改变时，强制 Virtualize 丢弃当前数据，重新触发 LoadPages
+		await InvokeAsync(async () =>
+		{
+			if (_virtualizeComponent != null)
+			{
+				await _virtualizeComponent.RefreshDataAsync();
+				StateHasChanged();
+			}
+		});
+	}
+
 }
 
 <style>

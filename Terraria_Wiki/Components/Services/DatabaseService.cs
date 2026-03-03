@@ -58,11 +58,11 @@ public class DatabaseService
     public async Task InitFtsTableAsync()
     {
         string createSql = @"
-    CREATE VIRTUAL TABLE IF NOT EXISTS WikiSearchIndex USING fts5(
-        Title UNINDEXED,          -- 加上 UNINDEXED，现在标题也不参与搜索了
-        PlainContent,             -- 只有纯文本内容参与搜索
-        tokenize='trigram'        -- 开启支持中文的分词器
-    );";
+            CREATE VIRTUAL TABLE IF NOT EXISTS WikiSearchIndex USING fts5(
+                Title UNINDEXED,          -- 加上 UNINDEXED，现在标题也不参与搜索了
+                PlainContent,             -- 只有纯文本内容参与搜索
+                tokenize='trigram'        -- 开启支持中文的分词器
+            );";
 
         // 直接执行建表语句
         await _db.ExecuteAsync(createSql);
@@ -253,7 +253,7 @@ public class DatabaseService
         {
             return new List<SearchResultItem>();
         }
-
+        int maxSearchItemCount= Preferences.Default.Get("MaxSearchItemCount", 50);
         // 1. 关键词清洗与预处理
         string cleanKeyword = keyword.Replace("\"", "").Replace("'", "").Trim();
         string likeTerm = $"%{cleanKeyword}%";
@@ -263,14 +263,14 @@ public class DatabaseService
         string matchTerm = string.Join(" AND ", ftsTerms);
 
         // 2. 终极融合 SQL
-        string sql = @"
+        string sql = $@"
             WITH 
             -- 【步骤 1：第一梯队 A】先查标题表（极快）
             TitleMatches AS (
                 SELECT Title, '' AS RedirectTo, 1 AS Priority, 0 AS RankScore
                 FROM WikiPage 
                 WHERE Title LIKE ?
-                LIMIT 50
+                LIMIT {maxSearchItemCount}
             ),
 
             -- 【步骤 2：第一梯队 B】查重定向表（带短路判定）
@@ -281,9 +281,9 @@ public class DatabaseService
                        1 AS Priority, 0 AS RankScore
                 FROM WikiRedirect 
                 WHERE FromName LIKE ?
-                  -- ⚔️ 核心短路逻辑：如果 TitleMatches 已经够 50 个了，这句直接为 FALSE，整段查询瞬间跳过
-                  AND (SELECT COUNT(*) FROM TitleMatches) < 50
-                LIMIT 50
+                  -- ⚔️ 核心短路逻辑：如果 TitleMatches 已经够 xx 个了，这句直接为 FALSE，整段查询瞬间跳过
+                  AND (SELECT COUNT(*) FROM TitleMatches) < {maxSearchItemCount}
+                LIMIT {maxSearchItemCount}
             ),
 
             -- 【步骤 3：合并第一梯队】把它俩拼起来，并做一次内部去重统计
@@ -305,8 +305,8 @@ public class DatabaseService
                        snippet(WikiSearchIndex, 1, '<mark class=""search-highlight"">', '</mark>', '...', 60) AS FtsSnippet
                 FROM WikiSearchIndex 
                 WHERE WikiSearchIndex MATCH ?
-                  -- ⚔️ 核心短路逻辑：如果第一梯队已经凑满 50 个词条，彻底封死 FTS5 的调用
-                  AND (SELECT COUNT(*) FROM Tier1Unique) < 50
+                  -- ⚔️ 核心短路逻辑：如果第一梯队已经凑满 xx 个词条，彻底封死 FTS5 的调用
+                  AND (SELECT COUNT(*) FROM Tier1Unique) < {maxSearchItemCount}
                 LIMIT 50
             ),
 
@@ -331,11 +331,11 @@ public class DatabaseService
                     MinPriority ASC, 
                     CASE MinPriority WHEN 1 THEN LENGTH(Title) ELSE MIN(RankScore) END ASC,
                     Title ASC
-                LIMIT 50
+                LIMIT {maxSearchItemCount}
             )
 
             -- 【最终步：精准制导提取摘要】
-            -- 只有这胜出的 50 位天之骄子，才有资格去取摘要！
+            -- 只有这胜出的 xx 位天之骄子，才有资格去取摘要！
             SELECT 
                 f.Title, 
                 f.RedirectTo,
@@ -405,7 +405,6 @@ public class DatabaseService
 
     // ==========================================
     // 3. 通用：分页 & 过滤查询 (简化版：直接 SELECT * 全表映射)
-    // 适用于像 WikiHistory 这种没有巨大文本列的表
     // ==========================================
     public async Task<List<T>> GetFilteredPagedAsync<T>(
         string searchColumn,

@@ -63,11 +63,21 @@
 							<Icon Name="clean" Size="16" />
 							清理未用资源
 						</div>
+						@if (_selectedWiki.IsResourceDownloaded)
+						{
+							<div class="primary-btn btn-red" @onclick="() => RunSafe(DeleteRes)">
+								<Icon Name="delete" Size="16" />
+								删除资源数据
+							</div>
+						}
+						else
+						{
+							<div class="primary-btn btn-blue" @onclick="() => RunSafe(DeleteRes)">
+								<Icon Name="delete" Size="16" />
+								下载资源数据
+							</div>
+						}
 
-						<div class="primary-btn btn-red" @onclick="() => RunSafe(DeleteRes)">
-							<Icon Name="delete" Size="16" />
-							删除图片数据
-						</div>
 
 						<div class="primary-btn btn-red" @onclick="() => RunSafe(Delete)">
 							<Icon Name="delete" Size="16" />
@@ -188,6 +198,7 @@
 		}
 		await action();
 	}
+	
 	private async Task DownloadAll()
 	{
 		_ = Task.Run(async () =>
@@ -203,6 +214,14 @@
 		});
 	}
 
+	private async Task DownloadRes()
+	{
+		_ = Task.Run(async () =>
+		{
+			await App.DataManager.DownloadResAsync();
+		});
+	}
+
 	private async Task Update()
 	{
 		bool isAll = _selectedWiki.IsResourceDownloaded;
@@ -212,6 +231,7 @@
 			await App.DataManager.UpdateDataAsync(isAll);
 		});
 	}
+	
 	private async Task CleanUpRes()
 	{
 		AppState.IsDownloading = true;
@@ -227,9 +247,10 @@
 		}
 
 	}
+	
 	private async Task DeleteRes()
 	{
-		bool isConfirmed = await Application.Current.MainPage?.DisplayAlert("提示", "确认删除图片等数据吗？", "确定", "取消");
+		bool isConfirmed = await Application.Current.MainPage?.DisplayAlert("提示", "确认删除图片资源等数据吗？", "确定", "取消");
 		if (isConfirmed)
 		{
 			AppState.IsDownloading = true;
@@ -241,7 +262,7 @@
 				await App.ManagerDb.SaveItemAsync(wikiBook);
 				await AppService.RefreshWikiBookAsync(App.ManagerDb, App.ContentDb);
 				StateHasChanged();
-				Application.Current.MainPage.DisplayAlert("提示", "图片等数据删除完成。", "确定");
+				Application.Current.MainPage.DisplayAlert("提示", "图片资源等数据删除完成。", "确定");
 			}
 			finally
 			{
@@ -250,6 +271,7 @@
 
 		}
 	}
+	
 	private async Task Delete()
 	{
 		bool isConfirmed = await Application.Current.MainPage?.DisplayAlert("提示", "确认删除整个数据库（包含收藏、历史）吗？", "确定", "取消");
@@ -263,6 +285,7 @@
 	}
 
 }
+
 <style>
 	.icon-btn {
 		padding: 4px;

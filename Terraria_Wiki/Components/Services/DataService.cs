@@ -235,28 +235,34 @@ namespace Terraria_Wiki.Services
         //检查是否有失败列表
         public async void CheckFailList()
         {
+
+            bool isAll = true;
             if (!(AppService.IsFileValid(_failedResListPath) || AppService.IsFileValid(_failedPageListPath)))
                 return;
+
+            var wikiBook = await App.ManagerDb.GetItemAsync<WikiBook>(1);
+            if (!wikiBook.IsResourceDownloaded) isAll = false;
 
             MainThread.BeginInvokeOnMainThread(async () =>
             {
                 bool result = await Application.Current.MainPage.DisplayAlert("提示", "检测到有失败文件，是否要重试下载？", "是", "否");
                 if (result)
                 {
-                    _ = Task.Run(RetryFailList);
+                    _ = Task.Run(() => RetryFailList(isAll));
                 }
             });
 
         }
 
         //重试失败列表
-        private async Task RetryFailList()
+        private async Task RetryFailList(bool isAll)
         {
             App.AppStateManager.IsDownloading = true;
             try
             {
                 OnLog?.Invoke("开始重试失败任务");
                 await InitializeSettings();
+
                 if (AppService.IsFileValid(_failedPageListPath))
                 {
                     OnLog?.Invoke("开始重试失败页面");
@@ -269,7 +275,8 @@ namespace Terraria_Wiki.Services
                     await AppService.AppendFileAsync(_tempFailedPageListPath, _failedPageListPath);
 
                 }
-                if (AppService.IsFileValid(_failedResListPath))
+
+                if (AppService.IsFileValid(_failedResListPath) && isAll == true)
                 {
                     OnLog?.Invoke("开始重试失败资源");
                     await StartDownloadResAsync(_failedResListPath, _tempFailedResListPath, 1, false);

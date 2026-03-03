@@ -298,6 +298,12 @@ namespace Terraria_Wiki.Services
             if (wikiBook.IsPageDownloaded == false && Directory.Exists(_baseDir))
                 Directory.Delete(_baseDir, true);
         }
+        //检查是否下载完整，否则删除文件
+        public static async Task DeleteDatabase()
+        {
+            if (Directory.Exists(_baseDir))
+                Directory.Delete(_baseDir, true);
+        }
 
         // ================= 核心功能 1: 获取页面清单 =================
         private async Task<int> GetWikiPagesListAsync()

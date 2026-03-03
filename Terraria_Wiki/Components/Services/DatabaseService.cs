@@ -223,6 +223,13 @@ public class DatabaseService
         return await _db.QueryAsync<WikiFavorite>(sql, count, startIndex);
     }
 
+    //释放空间
+    public async Task VacuumDatabaseAsync()
+    {
+        // 执行 SQLite 原生的 VACUUM 命令
+        await _db.ExecuteAsync("VACUUM");
+    }
+
     //储存搜索索引
     public async Task SaveSearchIndexAsync(string title, string plainContent)
     {

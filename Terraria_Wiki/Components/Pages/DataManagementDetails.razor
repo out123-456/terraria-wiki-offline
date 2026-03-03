@@ -183,7 +183,7 @@
 		// 统一检查
 		if (AppState.IsDownloading)
 		{
-			await Application.Current.MainPage.DisplayAlert("提示", "请稍后，正在处理下载任务。", "确定");
+			await Application.Current.MainPage.DisplayAlert("提示", "请稍后，正在处理任务。", "确定");
 			return;
 		}
 		await action();
@@ -214,15 +214,52 @@
 	}
 	private async Task CleanUpRes()
 	{
+		AppState.IsDownloading = true;
+		try
+		{
+			await App.ContentDb.VacuumDatabaseAsync();
+			await AppService.RefreshWikiBookAsync(App.ManagerDb, App.ContentDb);
+			Application.Current.MainPage.DisplayAlert("提示", "未用资源清理完成。", "确定");
+		}
+		finally
+		{
+			AppState.IsDownloading = false;
+		}
 
 	}
 	private async Task DeleteRes()
 	{
+		bool isConfirmed = await Application.Current.MainPage?.DisplayAlert("提示", "确认删除图片等数据吗？", "确定", "取消");
+		if (isConfirmed)
+		{
+			AppState.IsDownloading = true;
+			try
+			{
+				await App.ContentDb.DeleteItemsAsync<WikiAsset>();
+				var wikiBook = await App.ManagerDb.GetItemAsync<WikiBook>(WikiId);
+				wikiBook.IsResourceDownloaded = false;
+				await App.ManagerDb.SaveItemAsync(wikiBook);
+				await AppService.RefreshWikiBookAsync(App.ManagerDb, App.ContentDb);
+				StateHasChanged();
+				Application.Current.MainPage.DisplayAlert("提示", "图片等数据删除完成。", "确定");
+			}
+			finally
+			{
+				AppState.IsDownloading = false;
+			}
 
+		}
 	}
 	private async Task Delete()
 	{
+		bool isConfirmed = await Application.Current.MainPage?.DisplayAlert("提示", "确认删除整个数据库（包含收藏、历史）吗？", "确定", "取消");
+		if (isConfirmed)
+		{
+			AppState.IsDownloading = true;
+			await DataService.DeleteDatabase();
+			AppService.RestartApp();
 
+		}
 	}
 
 }

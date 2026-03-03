@@ -149,7 +149,7 @@ namespace Terraria_Wiki.Services
                 return;
             if (App.AppStateManager.IsDownloading)
             {
-                Application.Current.MainPage.DisplayAlert("提示", "请稍后，正在处理下载任务。", "确定");
+                Application.Current.MainPage.DisplayAlert("提示", "请稍后，正在处理任务。", "确定");
                 return;
             }
 

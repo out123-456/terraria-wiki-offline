@@ -55,11 +55,12 @@ namespace Terraria_Wiki.Services
 
                 await GetWikiRedirectsListAsync();
                 await GetWikiPagesListAsync();
-
+                var book = await App.ManagerDb.GetItemAsync<WikiBook>(1);
                 if (isAll)
                 {
                     await StartDownloadPagesAsync(_pageListPath, _resListPath, _failedPageListPath, _pageConcurrency);
                     await StartDownloadResAsync(_resListPath, _failedResListPath, _resConcurrency);
+                    book.IsResourceDownloaded = true;
                 }
                 else
                 {
@@ -67,10 +68,10 @@ namespace Terraria_Wiki.Services
                 }
 
                 // 数据库更新操作
-                var book = await App.ManagerDb.GetItemAsync<WikiBook>(1);
-                book.DownloadedTime = DateTime.Now;
+
+                book.UpdateTime = DateTime.Now;
                 book.IsPageDownloaded = true;
-                book.IsResourceDownloaded = true;
+
                 await App.ManagerDb.SaveItemAsync(book);
                 await AppService.RefreshWikiBookAsync(App.ManagerDb, App.ContentDb);
                 CleanUpTempFile();
@@ -166,7 +167,7 @@ namespace Terraria_Wiki.Services
                 File.Delete(_resListPath);
                 File.Move(tempFile, _resListPath, true);
                 var book = await App.ManagerDb.GetItemAsync<WikiBook>(1);
-                book.DownloadedTime = DateTime.Now;
+                book.UpdateTime = DateTime.Now;
                 await App.ManagerDb.SaveItemAsync(book);
                 await AppService.RefreshWikiBookAsync(App.ManagerDb, App.ContentDb);
                 CleanUpTempFile();
@@ -298,18 +299,35 @@ namespace Terraria_Wiki.Services
             }
         }
 
-        //检查是否下载完整，否则删除文件
-        public static async Task CheckFileIntegrity()
-        {
-            WikiBook wikiBook = await App.ManagerDb.GetItemAsync<WikiBook>(1);
-            if (wikiBook.IsPageDownloaded == false && Directory.Exists(_baseDir))
-                Directory.Delete(_baseDir, true);
-        }
-        //检查是否下载完整，否则删除文件
-        public static async Task DeleteDatabase()
+        //删除文件夹
+        public static async Task DeleteData()
         {
             if (Directory.Exists(_baseDir))
                 Directory.Delete(_baseDir, true);
+        }
+
+        //导出数据
+        public static async Task ExportData(string exportPath)
+        {
+
+            string databasePath = App.ContentDb.DatabasePath;
+            if (!File.Exists(databasePath))
+            {
+                MainThread.BeginInvokeOnMainThread(async () =>
+                {
+                    await Application.Current.MainPage.DisplayAlert("提示", "没有找到数据库文件，无法导出。", "确定");
+                });
+                return;
+            }
+            using var fsOut = new FileStream(exportPath, FileMode.Create, FileAccess.Write, FileShare.None);
+            using var writer = new BinaryWriter(fsOut);
+            writer.Write(Encoding.UTF8.GetBytes("WIKIDATA"));
+            var wikibook=await App.ContentDb.GetItemAsync<WikiBook>(1);
+            var info = new WikiPackageInfo
+            {
+                Id=1,
+            }
+
         }
 
         // ================= 核心功能 1: 获取页面清单 =================
@@ -765,7 +783,6 @@ namespace Terraria_Wiki.Services
             _maxRetryAttempts = Preferences.Default.Get("MaxRetryAttempts", 5);
             _pageConcurrency = Preferences.Default.Get("PageConcurrency", 2);
             _resConcurrency = Preferences.Default.Get("ResConcurrency", 10);
-            await CheckFileIntegrity();
             if (!Directory.Exists(_baseDir)) Directory.CreateDirectory(_baseDir);
             CleanUpTempFile();
 
@@ -824,6 +841,8 @@ namespace Terraria_Wiki.Services
         {
             await File.AppendAllLinesAsync(path, [url]);
         }
+
+
     }
 
     // ================= 保持原逻辑的辅助类 (稍微整理格式) =================

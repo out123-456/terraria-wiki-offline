@@ -48,7 +48,7 @@
 						</div>
 						<div class="stat-item">
 							<span class="stat-label">上次更新时间</span>
-							<span class="stat-value">@_selectedWiki.DownloadedTime.ToString("yyyy-MM-dd\nHH:mm")</span>
+							<span class="stat-value">@_selectedWiki.UpdateTime.ToString("yyyy-MM-dd\nHH:mm")</span>
 						</div>
 					</div>
 
@@ -198,7 +198,7 @@
 		}
 		await action();
 	}
-	
+
 	private async Task DownloadAll()
 	{
 		_ = Task.Run(async () =>
@@ -231,7 +231,7 @@
 			await App.DataManager.UpdateDataAsync(isAll);
 		});
 	}
-	
+
 	private async Task CleanUpRes()
 	{
 		AppState.IsDownloading = true;
@@ -247,7 +247,7 @@
 		}
 
 	}
-	
+
 	private async Task DeleteRes()
 	{
 		bool isConfirmed = await Application.Current.MainPage?.DisplayAlert("提示", "确认删除图片资源等数据吗？", "确定", "取消");
@@ -271,14 +271,18 @@
 
 		}
 	}
-	
+
 	private async Task Delete()
 	{
 		bool isConfirmed = await Application.Current.MainPage?.DisplayAlert("提示", "确认删除整个数据库（包含收藏、历史）吗？", "确定", "取消");
 		if (isConfirmed)
 		{
 			AppState.IsDownloading = true;
-			await DataService.DeleteDatabase();
+			await App.ContentDb.CloseConnection();
+			await App.ManagerDb.CloseConnection();
+			await DataService.DeleteData();
+			await App.ManagerDb.DeleteDatabaseFile();
+			await Task.Delay(500);
 			AppService.RestartApp();
 
 		}

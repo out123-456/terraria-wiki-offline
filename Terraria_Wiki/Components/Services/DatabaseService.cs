@@ -26,7 +26,11 @@ public class DatabaseService
         // ReadWrite | Create: 允许读写和创建
         // SharedCache: 允许并发访问（比如边看边通过API更新）
         var flags = SQLiteOpenFlags.ReadWrite | SQLiteOpenFlags.Create | SQLiteOpenFlags.SharedCache;
-
+        string path = Path.GetDirectoryName(dbPath);
+        if (!Directory.Exists(path))
+        {
+            Directory.CreateDirectory(path);
+        }
         _db = new SQLiteAsyncConnection(DatabasePath, flags);
     }
 
@@ -42,15 +46,18 @@ public class DatabaseService
         {
             await _db.CreateTableAsync<WikiBook>();
             await SeedWikiBooksAsync();
+
         }
         else
         {
+
             await _db.CreateTableAsync<WikiPage>();
             await _db.CreateTableAsync<WikiRedirect>();
             await _db.CreateTableAsync<WikiHistory>();
             await _db.CreateTableAsync<WikiFavorite>();
             await _db.CreateTableAsync<WikiAsset>();
             await InitFtsTableAsync();
+            await SeedWikiPageAsync();
         }
 
         _initialized = true;
@@ -68,7 +75,14 @@ public class DatabaseService
         await _db.ExecuteAsync(createSql);
     }
 
-
+    public async Task CloseConnection()
+    {
+        await _db.CloseAsync();
+    }
+    public async Task DeleteDatabaseFile()
+    {
+        File.Delete(DatabasePath);
+    }
 
     private async Task SeedWikiBooksAsync()
     {
@@ -103,7 +117,19 @@ public class DatabaseService
             await _db.InsertAllAsync(defaultWikiBooks);
         }
     }
+    private async Task SeedWikiPageAsync()
+    {
+        var count = await _db.Table<WikiPage>().CountAsync();
+        if (count == 0)
+        {
+            var defaultPage = new WikiPage();
+            defaultPage.Title = "Terraria Wiki";
+            defaultPage.Content = "请先下载数据。";
+            defaultPage.LastModified = DateTime.Now;
+            await _db.InsertAsync(defaultPage);
+        }
 
+    }
     // 2.1 通用功能：更新或插入 (InsertOrReplace) - 推荐用这个
     // 如果主键存在就更新，不存在就插入
     public async Task SaveItemAsync<T>(T item) where T : new()
@@ -260,7 +286,7 @@ public class DatabaseService
         {
             return new List<SearchResultItem>();
         }
-        int maxSearchItemCount= Preferences.Default.Get("MaxSearchItemCount", 50);
+        int maxSearchItemCount = Preferences.Default.Get("MaxSearchItemCount", 50);
         // 1. 关键词清洗与预处理
         string cleanKeyword = keyword.Replace("\"", "").Replace("'", "").Trim();
         string likeTerm = $"%{cleanKeyword}%";

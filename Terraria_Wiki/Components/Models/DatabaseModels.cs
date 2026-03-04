@@ -19,7 +19,7 @@ public class WikiBook
     // 存一下大小的字符串，展示给用户看，比如 "45.2 MB"
     public long DataSize { get; set; }
 
-    public DateTime DownloadedTime { get; set; }
+    public DateTime UpdateTime { get; set; }
 
 
 }

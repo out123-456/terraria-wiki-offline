@@ -105,3 +105,15 @@ public class RawSearchResult
     public string Title { get; set; }
     public string PlainContent { get; set; }
 }
+
+//导出数据结构
+public class WikiPackageInfo
+{
+    public int Id { get; set; }
+    public string Title { get; set; }
+    public bool IsPageDownloaded { get; set; }
+    public bool IsResourceDownloaded { get; set; }
+    public DateTime UpdateTime { get; set; }
+    public string AppVersion { get; set; }
+    public string Hash { get; set; }
+}

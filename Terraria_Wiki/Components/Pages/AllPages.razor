@@ -13,7 +13,7 @@
 
 	<div class="list-container all-pages-list">
 		<Virtualize @ref="_virtualizeComponent" ItemsProvider="@LoadPages" Context="wikipage">
-			<div class="list-item button" @onclick="()=>AppService.OpenPageAsync(wikipage.Title)">
+			<div class="list-item button" @onclick="() => AppService.OpenPageAsync(wikipage.Title)">
 				<span class="page-name">@wikipage.Title</span>
 				<span class="page-time">@wikipage.LastModified.ToString("yy-MM-dd HH:mm")</span>
 			</div>
@@ -25,7 +25,7 @@
 	private Virtualize<WikiPageSummary>? _virtualizeComponent;
 
 	private int totalPageCount = 0;
-	
+
 	protected override void OnInitialized()
 	{
 		//订阅 Topbar 传来的搜索事件
@@ -37,7 +37,7 @@
 		AppState.OnSearchQueryChanged -= HandleSearchChanged;
 	}
 
-	
+
 	protected override async Task OnInitializedAsync()
 	{
 		// 调用服务获取数量
@@ -103,8 +103,9 @@
 
 <style>
 
-	.all-pages-list{
-		gap:2px;
+	.all-pages-list {
+		gap: 2px;
+		padding: 0 0 12px;
 	}
 	/* 列表项样式 */
 	.list-item {

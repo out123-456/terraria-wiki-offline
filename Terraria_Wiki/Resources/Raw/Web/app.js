@@ -87,11 +87,11 @@ redirect("Terraria Wiki");
 async function gotoPage(title) {
     const args = {
         title: window.pageTitle,
-        position: document.querySelector('html').scrollTop
+        position: window.pageYOffset
     }
     const titleWithAnchor = JSON.parse(await callCSharpAsync("GetRedirectedTitleAndAnchorAsync", title));
     if (await redirect(titleWithAnchor.title) == null) return;
-    document.querySelector('html').scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     if (titleWithAnchor.anchor) {
         const element = document.getElementById(titleWithAnchor.anchor);
         if (element) {
@@ -104,8 +104,7 @@ async function gotoPage(title) {
 }
 async function backToPage(title, position) {
     if (await redirect(title) == null) return;
-    document.querySelector('html').scrollTo({ top: position, left: 0, behavior: 'instant' });
-
+    window.scrollTo({ top: position, left: 0, behavior: 'instant' });
 }
 async function gotoHistory(title) {
     if (await redirect(title) == null) return;
@@ -121,13 +120,13 @@ async function redirect(title) {
     document.getElementById("mw-content-text").innerHTML = result.content;
     document.getElementById("footer-info-lastmod").textContent = "此页面最后编辑于 " + result.lastModified;
     if (title == "Terraria Wiki") {
-        document.querySelector('body').classList.add("rootpage-Terraria_Wiki");
+        document.body.classList.add("rootpage-Terraria_Wiki");
         document.getElementById("firstHeading").setAttribute("style", "display:none");
     } else {
-        document.querySelector('body').classList.remove("rootpage-Terraria_Wiki");
+        document.body.classList.remove("rootpage-Terraria_Wiki");
         document.getElementById("firstHeading").removeAttribute("style");
     }
-    //refresh();
+    refresh();
     return true;
 }
 
@@ -161,7 +160,7 @@ function openThumb(thumb) {
 
 
 
-document.addEventListener('DOMContentLoaded', function () {
+function refresh() {
 
     // ============================================================
     // 1 & 2. Handle Wide Tables (宽表格处理 + 滚动条)
@@ -214,29 +213,32 @@ document.addEventListener('DOMContentLoaded', function () {
         window.resizeTimer = setTimeout(fixMobileFloating, 200);
     });
 
-    // ============================================================
+// ============================================================
     // 4. Template:Sound (音频播放控制)
-    // 原理：点击 .sound 容器播放内部的 <audio>，并停止其他音频
     // ============================================================
     const sounds = document.querySelectorAll('.sound');
     sounds.forEach(container => {
-        // 设置鼠标样式提示可点击
         container.style.cursor = 'pointer';
         container.title = '点击播放';
 
-        container.addEventListener('click', function (e) {
-            // 如果点击的是链接，不触发播放
-            if (e.target.tagName === 'A') return;
+        const audio = container.querySelector('audio');
+        if (!audio) return;
 
-            const audio = this.querySelector('audio');
-            if (!audio) return;
+        // ✅ 新增：监听当前音频自然播放结束的事件
+        audio.addEventListener('ended', function() {
+            container.classList.remove('sound-playing');
+            container.title = '点击播放';
+            audio.currentTime = 0; // 将进度条重置回开头
+        });
+
+        container.addEventListener('click', function (e) {
+            if (e.target.tagName === 'A') return;
 
             // 1. 停止页面上所有其他正在播放的音频
             document.querySelectorAll('audio').forEach(otherAudio => {
                 if (otherAudio !== audio && !otherAudio.paused) {
                     otherAudio.pause();
                     otherAudio.currentTime = 0;
-                    // 移除其他容器的播放状态样式（如果有）
                     otherAudio.closest('.sound')?.classList.remove('sound-playing');
                 }
             });
@@ -248,13 +250,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 this.title = '点击停止';
             } else {
                 audio.pause();
-                audio.currentTime = 0; // 回到开头
+                audio.currentTime = 0; 
                 this.classList.remove('sound-playing');
                 this.title = '点击播放';
             }
         });
     });
 
+    
     // ============================================================
     // 5. NPC/Item Infobox Mode Switch (模式切换 Tab)
     // 原理：点击 Tab，切换父容器的 class (c-normal/c-expert/c-master)
@@ -299,7 +302,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const offset = width > 980 ? 250 : (width > 500 ? 42 : 12);
 
         // 辅助函数：简化 class 切换
-        const toggleClass = (el, className, condition) => {
+        const toggleClass = (elementIdOrClass, className, condition) => {
+            const el = document.querySelector('.' + elementIdOrClass);
             if (!el) return;
             if (condition) el.classList.add(className);
             else el.classList.remove(className);
@@ -403,4 +407,4 @@ document.addEventListener('DOMContentLoaded', function () {
         window.mainLayoutTimer = setTimeout(updateMainPageLayout, 100);
     });
 
-});
+}

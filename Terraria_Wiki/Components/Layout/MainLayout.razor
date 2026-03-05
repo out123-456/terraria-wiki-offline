@@ -45,6 +45,17 @@
 	{
 		if (firstRender)
 		{
+#if !DEBUG
+			try
+			{
+				await JSRuntime.InvokeVoidAsync("disableBrowserShortcuts");
+			}
+			catch (Exception ex)
+			{
+				// 处理可能的 JS 互操作异常
+				Console.WriteLine($"无法禁用快捷键: {ex.Message}");
+			}
+#endif
 			AppState.Init(JS);
 			AppState.InitializeThemeAsync();
 			IframeBridge.Init(JS);

@@ -593,6 +593,18 @@ body > .content-wrapper
   overflow: hidden;
 }
 
+#contentSub::after {
+  /* the line between heading section and content body box */
+  content: "";
+  display: block;
+  pointer-events: none;
+  height: 0;
+  border-top: 1px solid var(--theme-hr-color-top);
+  border-bottom: 1px solid var(--theme-hr-color-bottom);
+  margin-top: 4px;
+  margin-bottom: var(--layout-padding-y);
+}
+
 /** content body box **/
 #mw-content-text {
   flex: 1 1 auto;
@@ -3415,7 +3427,7 @@ blockquote.quotation > div.c > p:last-child {
   width: 1.143em;
   height: 1.143em;
   vertical-align: text-top;
-  background: url(https://commons.wiki.gg/images/3/36/Audio.svg);
+  background: url(images/main/Audio.svg);
   background-size: contain;
   filter: var(--ooui--icon-normal-filter);
 }

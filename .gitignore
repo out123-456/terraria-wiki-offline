@@ -363,3 +363,7 @@ MigrationBackup/
 FodyWeavers.xsd
 /Test
 /com.bigbearking.terrariawiki.lnk
+/Terraria_Wiki/Resources/Raw/Web/common.js
+/Terraria_Wiki/Resources/Raw/Web/temp
+/Terraria_Wiki/Resources/Raw/AboutAssets.txt
+/Terraria_Wiki/Resources/Raw/Web/common-old.css

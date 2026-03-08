@@ -1,7 +1,9 @@
 ﻿using System.Diagnostics;
 using Terraria_Wiki.Services;
 using Terraria_Wiki.Models;
+#if WINDOWS
 using Microsoft.UI.Windowing;
+#endif
 namespace Terraria_Wiki
 {
     public partial class App : Application
@@ -22,6 +24,9 @@ namespace Terraria_Wiki
             DataManager = dataService;
             LogManager = logService;
             AppStateManager = appState;
+#if ANDROID
+            MainPage= new MainPage();
+#endif
 
 
         }
@@ -36,6 +41,8 @@ namespace Terraria_Wiki
             Debug.WriteLine($"[App] 启动完成！数据库路径：{ManagerDb.DatabasePath}，{ContentDb.DatabasePath}");
 
         }
+
+#if WINDOWS
         protected override Window CreateWindow(IActivationState? activationState)
         {
             Window window = new Window(new MainPage());
@@ -74,7 +81,6 @@ namespace Terraria_Wiki
         {
             if (sender is Window window)
             {
-#if WINDOWS
                 // 获取 Windows 原生窗口对象
                 var nativeWindow = window.Handler?.PlatformView as Microsoft.UI.Xaml.Window;
                 if (nativeWindow != null)
@@ -95,7 +101,6 @@ namespace Terraria_Wiki
                         }
                     }
                 }
-#endif
             }
         }
 
@@ -104,8 +109,6 @@ namespace Terraria_Wiki
             if (sender is Window window)
             {
                 bool isMaximized = false;
-
-#if WINDOWS
                 var nativeWindow = window.Handler?.PlatformView as Microsoft.UI.Xaml.Window;
                 if (nativeWindow != null)
                 {
@@ -126,7 +129,6 @@ namespace Terraria_Wiki
                         }
                     }
                 }
-#endif
 
                 // 只有在【非最大化】的情况下，才保存尺寸和坐标。
                 // 这样当你解除最大化时，窗口还能恢复到你之前调整的正常大小。
@@ -141,6 +143,7 @@ namespace Terraria_Wiki
                 }
             }
         }
-
+#endif
     }
+        
 }

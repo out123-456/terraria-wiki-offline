@@ -1,5 +1,4 @@
 ﻿using HtmlAgilityPack;
-using Microsoft.Windows.Management.Deployment;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Net;

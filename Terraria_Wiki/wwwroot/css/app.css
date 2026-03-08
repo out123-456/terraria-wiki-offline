@@ -63,6 +63,18 @@ body.is-switching-theme *::after {
     transition: background-color 0.35s,color 0.35s !important;
 }
 
+html, body {
+    /* 1. 禁止用户通过触摸进行缩放 */
+    touch-action: none;
+    /* 2. 禁止选择文本（防止长按弹出选择框，看着更像 App） */
+    user-select: none;
+    -webkit-user-select: none;
+    /* 3. 强制页面高度固定，不产生溢出滚动 */
+    height: 100%;
+    overflow: hidden;
+    /* 4. 针对 iOS 的特殊回弹禁用（如果以后要跑 iOS） */
+    -webkit-overflow-scrolling: auto;
+}
 
 /* 全局基础样式 */
 body {

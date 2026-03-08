@@ -22,12 +22,13 @@ public class DatabaseService
         DatabasePath = dbPath;
         Mode = mode;
 
-        var flags = SQLiteOpenFlags.ReadWrite | SQLiteOpenFlags.Create | SQLiteOpenFlags.SharedCache;
+        var flags = SQLiteOpenFlags.ReadWrite | SQLiteOpenFlags.Create | SQLiteOpenFlags.SharedCache;    
         string path = Path.GetDirectoryName(DatabasePath);
         if (!Directory.Exists(path))
         {
             Directory.CreateDirectory(path);
         }
+
         _db = new SQLiteAsyncConnection(DatabasePath, flags);
     }
 

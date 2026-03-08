@@ -296,6 +296,7 @@ namespace Terraria_Wiki.Services
         }
 
         //文件及文件夹选择
+#if WINDOWS
         public static async Task<string> PickFileAsync(string title = "请选择文件", FilePickerFileType types = null)
         {
             try
@@ -315,6 +316,57 @@ namespace Terraria_Wiki.Services
                 return null;
             }
         }
+#endif
+#if ANDROID
+        public static async Task<string> PickFileAsync(string title = "请选择文件", FilePickerFileType types = null)
+        {
+            try
+            {
+                // 🛡️ 核心改变：在安卓上忽略传入的 types，强行使用“所有文件”过滤器
+                // 这样可以确保没有任何文件会被系统置灰
+                var options = new PickOptions
+                {
+                    PickerTitle = title,
+                    FileTypes = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
+            {
+                { DevicePlatform.Android, new[] { "*/*" } }, // 允许选择任何东西
+                { DevicePlatform.WinUI, new[] { ".db", ".png", ".jpg" } }
+            })
+                };
+
+                var result = await FilePicker.Default.PickAsync(options);
+
+                if (result == null) return null;
+
+                // --- 选完之后的逻辑保持一致 ---
+
+                // 1. 如果你还是想限制只能选图片或数据库，可以在这里手动拦截：
+                /*
+                var ext = Path.GetExtension(result.FileName).ToLower();
+                if (ext != ".db" && ext != ".png") {
+                     await App.Current.MainPage.DisplayAlert("错误", "请选择正确的文件格式", "确定");
+                     return null;
+                }
+                */
+
+                // 2. 拷贝到沙盒（解决 content:// 无法直接读取的问题）
+                var targetPath = Path.Combine(FileSystem.CacheDirectory, result.FileName);
+
+                using (var stream = await result.OpenReadAsync())
+                using (var newFile = File.Create(targetPath))
+                {
+                    await stream.CopyToAsync(newFile);
+                }
+
+                return targetPath;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"文件选择出错: {ex.Message}");
+                return null;
+            }
+        }
+#endif
 
         /// <summary>
         /// 选择文件夹并返回路径 (目前主要针对 Windows 优化)

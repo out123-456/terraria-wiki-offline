@@ -19,7 +19,7 @@ namespace Terraria_Wiki.Services
             _listener = new HttpListener();
 
             // 监听本地 55000 端口
-            _prefix = "http://localhost:55000/";
+            _prefix = "http://127.0.0.1:55000/";
             _listener.Prefixes.Add(_prefix);
         }
 
@@ -132,47 +132,6 @@ namespace Terraria_Wiki.Services
                 {
                     // 如果请求根目录，默认返回 index.html
                     if (path == "/") path = "/index.html";
-#if DEBUG
-                    // 1. 获取当前应用程序运行的目录 (通常是 bin/Debug/...)
-                    string baseDir = AppDomain.CurrentDomain.BaseDirectory;
-                    DirectoryInfo projectRoot = new DirectoryInfo(baseDir);
-
-                    // 2. 向上递归查找项目根目录
-                    // 逻辑：不断获取父目录，直到找到一个目录下包含 "Resources" 文件夹
-                    while (projectRoot != null && !Directory.Exists(Path.Combine(projectRoot.FullName, "Resources")))
-                    {
-                        projectRoot = projectRoot.Parent;
-                    }
-
-                    if (projectRoot != null)
-                    {
-                        // 3. 拼接本地物理路径：项目根目录 + Resources/Raw/Web + 请求的文件名
-                        // TrimStart 移除路径开头的 / 或 \，防止 Path.Combine 将其视为根路径
-                        string localPath = Path.Combine(projectRoot.FullName, "Resources", "Raw", "Web", path.TrimStart('/', '\\'));
-
-                        if (File.Exists(localPath))
-                        {
-                            // 4. 读取物理文件（支持热重载：修改 html 后刷新 WebView 即可生效）
-                            buffer = await File.ReadAllBytesAsync(localPath);
-                            contentType = GetMimeType(path);
-                            Debug.WriteLine($"[Local Debug] Loaded: {localPath}");
-                        }
-                        else
-                        {
-                            statusCode = 404;
-                            Debug.WriteLine($"[Local Debug 404] File not found on disk: {localPath}");
-                        }
-                    }
-                    else
-                    {
-                        statusCode = 500;
-                        Debug.WriteLine("[Local Debug Error] Could not locate Project Root directory.");
-                    }
-
-
-
-
-#else
                     // 拼接 Resources/Raw 下的路径
                     // 假设你的 HTML 文件放在 Resources/Raw/Web 文件夹下
                     string assetPath = "Web" + path;
@@ -191,12 +150,6 @@ namespace Terraria_Wiki.Services
                         statusCode = 404; // Raw 资源里没找到
                         Debug.WriteLine($"[File 404] {assetPath}");
                     }
-
-
-
-
-#endif
-
 
                 }
             }

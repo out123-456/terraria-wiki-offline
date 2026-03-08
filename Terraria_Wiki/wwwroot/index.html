@@ -39,7 +39,7 @@
         <a class="dismiss loading-text">关闭</a>
     </div>-->
 
-    <script src="scripts/blazor.webview.es2019.js" autostart="false"></script>
+    <script src="_framework/blazor.webview.js" autostart="false"></script>
     <script>
         const pendingCsharpCalls = {};
 
@@ -126,7 +126,9 @@
 
         // 监听 Iframe 发来的消息 -> 转发给 C#
         window.addEventListener('message', function (e) {
-
+            if (typeof event.data === 'string' && event.data.startsWith('__bwv:')) {
+                return;
+            }
             // 调用 C# 的静态方法 ReceiveMessage
             // 注意：把 'YourProjectName' 换成你的项目名！！！
             DotNet.invokeMethodAsync('Terraria_Wiki', 'ReceiveMessage', JSON.stringify(e.data));

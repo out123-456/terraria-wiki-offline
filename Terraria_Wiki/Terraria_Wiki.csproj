@@ -52,6 +52,9 @@
 	
 	<PropertyGroup Condition="$(TargetFramework.Contains('-windows'))">
 		<ApplicationIcon>Resources\AppIcon\appicon.ico</ApplicationIcon>
+<AndroidEnableProfiledAot>false</AndroidEnableProfiledAot>
+<AndroidLinkMode>None</AndroidLinkMode>
+<AndroidEnableMultiDex>true</AndroidEnableMultiDex>
 	</PropertyGroup>
 
 	<ItemGroup>

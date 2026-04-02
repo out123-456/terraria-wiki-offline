@@ -14,35 +14,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # 1. 安装 .NET 10 SDK
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      # 2. 安装 MAUI 工作负载 (必须)
       - name: Install MAUI workloads
         run: dotnet workload install maui
 
-      # 3. 安装 JDK 17 (MAUI Android 需要)
       - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: 'microsoft'
           java-version: '17'
 
-      # 4. 设置 Android SDK (确保 build-tools 可用)
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          api-level: 34
-          build-tools: 34.0.0
-
-      # 5. 还原 NuGet 包
       - name: Restore dependencies
         run: dotnet restore
 
-      # 6. 构建并签名 APK (添加容错参数)
       - name: Build Android APK
         run: |
           dotnet publish -f:net10.0-android -c:Release `
@@ -52,13 +40,8 @@ jobs:
             -p:AndroidSigningStorePass=123456 `
             -p:AndroidSigningStoreKey=${{ github.workspace }}/keystore.jks `
             -p:AndroidPackageFormat=apk `
-            -p:AndroidEnableProfiledAot=false `
-            -p:AndroidEnableMultiDex=true `
-            -p:AndroidDexTool=d8 `
-            -p:UseCommonOutputDirectory=false `
-            --no-restore
+            -p:JavaMaximumHeapSize=1G
 
-      # 7. 上传 APK
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:

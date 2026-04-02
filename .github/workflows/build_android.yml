@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 env:
-  DOTNET_VERSION: '8.0.x'
+  DOTNET_VERSION: '10.0.x'  # 主要修改 1：更新 SDK 版本
 
 jobs:
   build:
@@ -14,34 +14,36 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # 设置 .NET 10 环境
       - name: Setup .NET
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v4  # 推荐更新至 v4
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      # 如果你需要安装特定 Android SDK 版本（可选，MAUI 通常自带）
-      # - name: Setup Android SDK
-      #   uses: android-actions/setup-android@v3
-      #   with:
-      #     api-level: 34
+      # 主要修改 2：安装 .NET 10 的 MAUI 工作负载
+      - name: Install .NET MAUI Workloads
+        run: dotnet workload install maui
 
+      # 恢复依赖项
       - name: Restore dependencies
         run: dotnet restore
 
+      # 构建并签名 APK
       - name: Build Android APK
         run: |
-          dotnet publish -f:net8.0-android -c:Release \
-            -p:AndroidKeyStore=true \
-            -p:AndroidSigningKeyAlias=QiQikey \
-            -p:AndroidSigningKeyPass=123456 \
-            -p:AndroidSigningStorePass=123456 \
-            -p:AndroidSigningStoreKey=${{ github.workspace }}/keystore.jks \
+          dotnet publish -f:net10.0-android -c:Release `
+            -p:AndroidKeyStore=true `
+            -p:AndroidSigningKeyAlias=QiQikey `
+            -p:AndroidSigningKeyPass=123456 `
+            -p:AndroidSigningStorePass=123456 `
+            -p:AndroidSigningStoreKey=${{ github.workspace }}/keystore.jks `
             -p:AndroidPackageFormat=apk
 
+      # 上传 APK 作为构建产物
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: android-release-apk
           path: |
-            **/bin/Release/net8.0-android/*-Signed.apk
-            **/bin/Release/net8.0-android/*-Signed.aab
+            **/bin/Release/net10.0-android/*-Signed.apk
+            **/bin/Release/net10.0-android/*-Signed.aab

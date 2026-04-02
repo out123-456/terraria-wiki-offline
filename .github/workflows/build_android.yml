@@ -31,25 +31,18 @@ jobs:
       - name: Restore dependencies
         run: dotnet restore
 
-      - name: Build Android APK
-        run: |
-          $ks = "${{ github.workspace }}\keystore.jks"
-          dotnet publish -f:net10.0-android -c:Release `
-            -p:AndroidKeyStore=true `
-            -p:AndroidSigningKeyAlias=QiQikey `
-            -p:AndroidSigningKeyPass=123456 `
-            -p:AndroidSigningStorePass=123456 `
-            "-p:AndroidSigningStoreKey=$ks" `
-            -p:AndroidPackageFormat=apk `
-            -p:JavaMaximumHeapSize=4G `
-            -p:AndroidEnableMultiDex=true `
-            -p:AndroidDexTool=d8 `
-            -p:AndroidEnableR8=false
+      - name: Build Android APK (unsigned)
+        run: dotnet publish -f:net10.0-android -c:Release `
+          -p:AndroidPackageFormat=apk `
+          -p:JavaMaximumHeapSize=4G `
+          -p:AndroidEnableMultiDex=true `
+          -p:AndroidDexTool=d8 `
+          -p:AndroidEnableR8=false
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
           name: android-release-apk
           path: |
-            **/bin/Release/net10.0-android/*-Signed.apk
-            **/bin/Release/net10.0-android/*-Signed.aab
+            **/bin/Release/net10.0-android/*.apk
+            **/bin/Release/net10.0-android/*.aab

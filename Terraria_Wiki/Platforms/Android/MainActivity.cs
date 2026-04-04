@@ -15,7 +15,7 @@ namespace Terraria_Wiki
             SetImmersive();
         }
 
-        protected override void OnWindowFocusChanged(bool hasFocus)
+        public override void OnWindowFocusChanged(bool hasFocus)
         {
             base.OnWindowFocusChanged(hasFocus);
             if (hasFocus) SetImmersive();

@@ -122,20 +122,20 @@ async function gotoPage(title) {
     const args = {
         title: window.pageTitle,
         position: window.pageYOffset
-    }
-    document.documentElement.style.cursor = 'progress';
-    document.documentElement.style.opacity = '0.5';
+    };
+    document.getElementById("loading-mask").style.display = "block";
     const titleWithAnchor = JSON.parse(await callCSharpAsync("GetRedirectedTitleAndAnchorAsync", title));
-    document.documentElement.style.cursor = '';
-    document.documentElement.style.opacity = '1';
+
     if (await redirect(titleWithAnchor.title) == null) return;
     window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+    document.getElementById("loading-mask").style.display = "none";
     if (titleWithAnchor.anchor) {
         const element = document.getElementById(titleWithAnchor.anchor);
         if (element) {
             element.scrollIntoView({ behavior: "smooth" });
         }
     }
+    
     callCSharpAsync("SaveToTempHistory", JSON.stringify(args))
 
 

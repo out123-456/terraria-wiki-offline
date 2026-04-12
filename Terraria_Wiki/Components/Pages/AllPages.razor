@@ -12,7 +12,7 @@
 	</header>
 
 	<div class="list-container all-pages-list">
-		<Virtualize @ref="_virtualizeComponent" ItemsProvider="@LoadPages" Context="wikipage">
+		<Virtualize @ref="_virtualizeComponent" ItemsProvider="@LoadPages" Context="wikipage" OverscanCount="25">
 			<div class="list-item button" @onclick="() => AppService.OpenPageAsync(wikipage.Title)">
 				<span class="page-name">@wikipage.Title</span>
 				<span class="page-time">@wikipage.LastModified.ToString("yy-MM-dd HH:mm")</span>

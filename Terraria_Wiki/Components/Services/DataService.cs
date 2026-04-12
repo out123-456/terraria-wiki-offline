@@ -306,6 +306,13 @@ namespace Terraria_Wiki.Services
             }
         }
 
+        public static async Task ClearFailedListAsync()
+        {
+
+            if (File.Exists(_failedPageListPath)) File.Delete(_failedPageListPath);
+            if (File.Exists(_failedResListPath)) File.Delete(_failedResListPath);
+
+        }
         //删除文件夹
         public static async Task DeleteData()
         {
@@ -460,9 +467,9 @@ namespace Terraria_Wiki.Services
                 }
                 Directory.Move(_tempDir, _baseDir);
                 WikiBook wikiBook = await App.ManagerDb.GetItemAsync<WikiBook>(meta.Id);
-                wikiBook.IsPageDownloaded=meta.IsPageDownloaded;
-                wikiBook.IsResourceDownloaded=meta.IsResourceDownloaded;
-                wikiBook.UpdateTime=meta.UpdateTime;
+                wikiBook.IsPageDownloaded = meta.IsPageDownloaded;
+                wikiBook.IsResourceDownloaded = meta.IsResourceDownloaded;
+                wikiBook.UpdateTime = meta.UpdateTime;
                 await App.ManagerDb.SaveItemAsync(wikiBook);
             }
             finally
@@ -924,6 +931,11 @@ namespace Terraria_Wiki.Services
         {
             _maxRetryAttempts = Preferences.Default.Get("MaxRetryAttempts", 5);
             _pageConcurrency = Preferences.Default.Get("PageConcurrency", 2);
+            if (Preferences.Default.Get("PageConcurrency", 2) > 3)
+            {
+                _pageConcurrency = 2;
+                Preferences.Default.Set("PageConcurrency", 2);
+            }
             _resConcurrency = Preferences.Default.Get("ResConcurrency", 10);
             if (!Directory.Exists(_baseDir)) Directory.CreateDirectory(_baseDir);
             CleanUpTempFile();

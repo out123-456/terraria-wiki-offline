@@ -76,6 +76,9 @@
 
         <img id="modal-full-image" src="" alt="原图" />
     </div>
+    <div id="loading-mask"
+        style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 99999; cursor: wait;">
+    </div>
 
 </body>
 <style>
@@ -126,35 +129,32 @@
         overflow-y: hidden;
     }
 
-    /*滚动条*/
+    /* 1. 基础宽度 - 稍微收窄一点，显得更精致 */
     ::-webkit-scrollbar {
-        width: 7px;
-        /* 纵向滚动条宽度 */
-        height: 7px;
-        /* 横向滚动条高度 */
+        width: 8px;
+        height: 6px;
     }
 
-    /* 2. 滚动条轨道 (Track) - 设为透明，让背景透出来 */
+    /* 2. 轨道 - 保持完全透明 */
     ::-webkit-scrollbar-track {
         background: transparent;
     }
 
-    /* 3. 滚动条滑块 (Thumb) - 核心样式 */
+    /* 3. 滑块 - 使用半透明色，确保在深色/浅色背景下都能“透”出来 */
     ::-webkit-scrollbar-thumb {
-        background-color: var(--hover-bg);
-        /* 半透明灰，适应任何背景 */
-        border-radius: 9999px;
-        /* 胶囊圆角 */
-        /* 增加一个白色边框，可以制造出“悬浮”在轨道上的错觉 */
+        background-color: rgba(128, 128, 128, 0.3);
+        /* 使用通用半透明灰色 */
+        border-radius: 10px;
+        /* 重点：增加一个透明边框，配合 content-box 实现滑块变窄的效果 */
+        border: 1px solid transparent;
         background-clip: content-box;
-        /* 关键：让背景只渲染在内容区，配合边框实现留白 */
+        transition: background-color 0.2s;
     }
 
-    /* 4. 鼠标悬停时变深 */
+    /* 4. 悬停状态 - 宽度不变，但颜色加深，增加互动反馈 */
     ::-webkit-scrollbar-thumb:hover {
-        background-color: var(--pressed-bg);
+        background-color: rgba(128, 128, 128, 0.5);
     }
-
 </style>
 
 </html>

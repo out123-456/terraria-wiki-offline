@@ -19,7 +19,10 @@
 
 			@* --- 状态 A：已下载 (显示数据大小、更新按钮、页面列表) --- *@
 			<div class="title-placeholder">
-				<div class="placeholder-icon">📦</div>
+				<div class="placeholder-icon">
+					<img src="images/@_selectedWiki.Title.Replace(" ", "_")/logo.png" style="
+					height: 85px;object-fit: contain;" />
+				</div>
 				<h3>@(_selectedWiki.IsPageDownloaded? _selectedWiki.Title: "尚未获取数据")</h3>
 				<p>@(_selectedWiki.IsPageDownloaded? _selectedWiki.Description: "你需要下载基础数据包和资源文件才能离线浏览此 Wiki。")</p>
 			</div>

@@ -321,54 +321,72 @@ namespace Terraria_Wiki.Services
         }
 
         //导出数据
+
         public static async Task ExportData(string exportPath)
         {
+            // --- 准备工作 ---
+            string originalDbPath = App.ContentDb.DatabasePath;
+            // 创建一个临时的副本路径，放在缓存目录中
+            string tempDbPath = Path.Combine(FileSystem.CacheDirectory, "temp_export.db");
 
-            string databasePath = App.ContentDb.DatabasePath;
-            if (!File.Exists(databasePath))
+            if (!File.Exists(originalDbPath))
             {
-
                 throw new Exception("没有找到数据库文件，无法导出。");
             }
-            var wikibook = await App.ManagerDb.GetItemAsync<WikiBook>(1);
-            var info = new WikiPackageInfo
-            {
-                Id = 1,
-                Title = wikibook.Title,
-                IsPageDownloaded = wikibook.IsPageDownloaded,
-                IsResourceDownloaded = wikibook.IsResourceDownloaded,
-                UpdateTime = wikibook.UpdateTime,
-                AppVersion = AppInfo.Current.VersionString,
-                Files = new List<FileMeta>()
-            };
-            //解除数据库占用
-            await App.ContentDb.CloseConnection();
-            var files = Directory.GetFiles(_baseDir, "*.*", SearchOption.AllDirectories);
 
+            // --- 核心步骤：在线备份 (不断开连接) ---
             try
             {
+                // 使用 SQLite 的在线备份 API，这会自动处理文件锁和数据一致性
+                var conn = App.ContentDb.GetConnection();
+                await conn.BackupAsync(tempDbPath);
+
+                // --- 开始打包流程 ---
+                var wikibook = await App.ManagerDb.GetItemAsync<WikiBook>(1);
+                var info = new WikiPackageInfo
+                {
+                    Id = 1,
+                    Title = wikibook.Title,
+                    IsPageDownloaded = wikibook.IsPageDownloaded,
+                    IsResourceDownloaded = wikibook.IsResourceDownloaded,
+                    UpdateTime = wikibook.UpdateTime,
+                    AppVersion = AppInfo.Current.VersionString,
+                    Files = new List<FileMeta>()
+                };
+
+                // 获取所有文件（此时不需要 CloseConnection）
+                var files = Directory.GetFiles(_baseDir, "*.*", SearchOption.AllDirectories).Where(f =>
+                !f.EndsWith(".db-shm", StringComparison.OrdinalIgnoreCase) &&
+                !f.EndsWith(".db-wal", StringComparison.OrdinalIgnoreCase)
+                ).ToList();
                 // 1. 预计算所有文件的 MD5 和大小
                 using (var md5 = MD5.Create())
                 {
                     foreach (var file in files)
                     {
-                        using var fs = File.OpenRead(file);
+                        // 重点：如果当前扫到了真实的数据库文件，我们读那个备份出来的临时文件
+                        string fileToRead = (file == originalDbPath) ? tempDbPath : file;
+
+                        using var fs = File.OpenRead(fileToRead);
                         byte[] hashBytes = md5.ComputeHash(fs);
 
                         info.Files.Add(new FileMeta
                         {
-                            RelativePath = Path.GetRelativePath(_baseDir, file),
+                            RelativePath = Path.GetRelativePath(_baseDir, file), // 包内路径依然保持原样
                             Size = fs.Length,
                             MD5 = Convert.ToHexStringLower(hashBytes)
                         });
                     }
                 }
-                // 2. 开始写入私有包
+
+                // 2. 开始写入私有包 (.pkg)
                 var exportFileName = Path.GetFileName(_baseDir) + ".pkg";
-                using var fsOut = new FileStream(Path.Combine(exportPath, exportFileName), FileMode.Create, FileAccess.Write, FileShare.None);
+                string finalPkgPath = Path.Combine(exportPath, exportFileName);
+
+                using var fsOut = new FileStream(finalPkgPath, FileMode.Create, FileAccess.Write, FileShare.None);
                 using var writer = new BinaryWriter(fsOut);
 
-                // 写入私有头
+                // 写入私有头标识
                 writer.Write(Encoding.UTF8.GetBytes("WIKIDATA"));
 
                 // 写入 JSON 元数据
@@ -377,17 +395,30 @@ namespace Terraria_Wiki.Services
                 writer.Write(jsonBytes.Length);
                 writer.Write(jsonBytes);
 
-                // 3. 流式写入所有文件的真实二进制数据
+                // 3. 流式写入所有二进制数据
                 foreach (var file in files)
                 {
-                    using var fsIn = File.OpenRead(file);
-                    fsIn.CopyTo(fsOut);
+                    // 同样判断：如果是数据库，就从副本读取数据流
+                    string fileToRead = (file == originalDbPath) ? tempDbPath : file;
+
+                    using var fsIn = File.OpenRead(fileToRead);
+                    await fsIn.CopyToAsync(fsOut); // 建议用异步 CopyTo
                 }
+
+                Debug.WriteLine($"[Export] 导出成功: {finalPkgPath}");
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"[Export] 导出失败: {ex.Message}");
+                throw;
             }
             finally
             {
-                //重连数据库
-                App.ContentDb.ReConnection();
+                // 4. 清理：无论成功失败，删掉临时副本
+                if (File.Exists(tempDbPath))
+                {
+                    try { File.Delete(tempDbPath); } catch { /* 忽略清理失败 */ }
+                }
             }
 
 

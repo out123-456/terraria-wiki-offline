@@ -66,9 +66,10 @@
             IframeBridge.Init(JS);
             AppService.Init(NavManager);
             await ThemeService.InitWebThemeAsync(JS);
-            if (Application.Current?.MainPage is MainPage mainPage)
+            if (Application.Current?.Windows[0].Page is MainPage mainPage)
             {
                 mainPage.HideLoadingScreen();
+
             }
 
         }

@@ -166,7 +166,7 @@
             _ = ThemeService.SetAppThemeAsync(value);
         }
     }
-    
+
     private string ContentTheme
     {
         get => ThemeService.ContentTheme;
@@ -234,7 +234,7 @@
         // 统一检查
         if (AppState.IsProcessing)
         {
-            await Application.Current.MainPage.DisplayAlertAsync("提示", "请稍后，正在处理任务。", "确定");
+            await Application.Current.Windows[0].Page.DisplayAlertAsync("提示", "请稍后，正在处理任务。", "确定");
             return;
         }
         await action();
@@ -242,30 +242,30 @@
     private async Task ExportData()
     {
 #if WINDOWS
-		AppState.IsProcessing = true;
-		_exportMessage = "正在导出...";
-		try
-		{
-			string exportPath = await AppService.PickFolderAsync();
-			if (string.IsNullOrEmpty(exportPath)) return;
-			await Task.Run(async () =>
-			{
-				await DataService.ExportData(exportPath);
-			});
+        AppState.IsProcessing = true;
+        _exportMessage = "正在导出...";
+        try
+        {
+            string exportPath = await AppService.PickFolderAsync();
+            if (string.IsNullOrEmpty(exportPath)) return;
+            await Task.Run(async () =>
+            {
+                await DataService.ExportData(exportPath);
+            });
 
 
-			Application.Current.MainPage.DisplayAlertAsync("提示", "导出到本地文件夹完成。", "确定");
-		}catch(Exception ex)
-		{
-			Application.Current.MainPage.DisplayAlertAsync("提示", $"发生错误，请重试。\n{ex}", "确定");
-		}
-		finally
-		{
-			AppState.IsProcessing = false;
-			_exportMessage = "导出";
-		}
+            Application.Current.Windows[0].Page.DisplayAlertAsync("提示", "导出到本地文件夹完成。", "确定");
+        }catch(Exception ex)
+        {
+            Application.Current.Windows[0].Page.DisplayAlertAsync("提示", $"发生错误，请重试。\n{ex}", "确定");
+        }
+        finally
+        {
+            AppState.IsProcessing = false;
+            _exportMessage = "导出";
+        }
 #elif ANDROID
-		Application.Current.MainPage.DisplayAlertAsync("提示", $"手机版暂不支持此功能。", "确定");
+		Application.Current.Windows[0].Page.DisplayAlertAsync("提示", $"手机版暂不支持此功能。", "确定");
 #endif
 
 
@@ -282,17 +282,21 @@
                 });
             string filePath = await AppService.PickFileAsync("请选择导入包", customFileType);
             if (string.IsNullOrEmpty(filePath)) return;
+            if (Application.Current?.Windows[0].Page is MainPage mainPage)
+            {
+                mainPage.ShowLoadingPopup("导入数据", "正在导入数据，请稍候...");
+
+            }
             await Task.Run(async () =>
             {
                 await DataService.ImportData(filePath);
             });
 
-            await Application.Current.MainPage.DisplayAlertAsync("提示", "数据导入完成，即将重启。", "确定");
             AppService.RestartApp();
         }
         catch (Exception ex)
         {
-            Application.Current.MainPage.DisplayAlertAsync("提示", $"发生错误，请重试。\n{ex}", "确定");
+            Application.Current.Windows[0].Page.DisplayAlertAsync("提示", $"发生错误，请重试。\n{ex}", "确定");
 
 
         }
@@ -316,7 +320,7 @@
             if (result != null && result.IsUpdateAvailable)
             {
                 // 发现新版本，弹出提示框
-                bool wantsToUpdate = await Application.Current.MainPage.DisplayAlertAsync(
+                bool wantsToUpdate = await Application.Current.Windows[0].Page.DisplayAlertAsync(
                     $"发现新版本: v{result.LatestVersion}",
                     $"更新内容：\n{result.ReleaseNotes}",
                     "前往下载",
@@ -331,12 +335,12 @@
             else
             {
 
-                Application.Current.MainPage.DisplayAlertAsync("提示", "当前已是最新版本。", "确定");
+                Application.Current.Windows[0].Page.DisplayAlertAsync("提示", "当前已是最新版本。", "确定");
             }
         }
         catch (Exception e)
         {
-            Application.Current.MainPage.DisplayAlertAsync("提示", $"检查失败：\n{e.Message}", "确定");
+            Application.Current.Windows[0].Page.DisplayAlertAsync("提示", $"检查失败：\n{e.Message}", "确定");
         }
         finally
         {
@@ -354,11 +358,11 @@
 
     private async Task ClearFailedList()
     {
-        bool confirm = await Application.Current.MainPage.DisplayAlertAsync("确认清理", "此操作将删除所有下载失败的记录，无法恢复。确定要继续吗？", "确定", "取消");
+        bool confirm = await Application.Current.Windows[0].Page.DisplayAlertAsync("确认清理", "此操作将删除所有下载失败的记录，无法恢复。确定要继续吗？", "确定", "取消");
         if (confirm)
         {
             await DataService.ClearFailedListAsync();
-            await Application.Current.MainPage.DisplayAlertAsync("提示", "已清理失败列表。", "确定");
+            await Application.Current.Windows[0].Page.DisplayAlertAsync("提示", "已清理失败列表。", "确定");
         }
     }
 }

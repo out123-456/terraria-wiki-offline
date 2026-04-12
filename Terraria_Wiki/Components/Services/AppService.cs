@@ -164,11 +164,11 @@ namespace Terraria_Wiki.Services
         {
             if (App.AppStateManager.CurrentPage == pageName)
                 return;
-            if (App.AppStateManager.IsProcessing)
-            {
-                Application.Current.Windows[0].Page.DisplayAlertAsync("提示", "请稍后，正在处理任务。", "确定");
-                return;
-            }
+            //if (App.AppStateManager.IsProcessing)
+            //{
+            //    Application.Current.Windows[0].Page.DisplayAlertAsync("提示", "请稍后，正在处理任务。", "确定");
+            //    return;
+            //}
 
             App.AppStateManager.CurrentPage = pageName;
             _navManager.NavigateTo(App.AppStateManager.CurrentPage);

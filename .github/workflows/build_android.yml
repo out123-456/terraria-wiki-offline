@@ -45,6 +45,7 @@ jobs:
           -p:AndroidDexTool=d8 `
           -p:AndroidEnableR8=true
           -p:AndroidVersionCode=$vc
+          "-p:AndroidVersionCodePattern={versionCode}"
 
       - name: Sign each APK
         run: |

@@ -1,490 +1,505 @@
 ﻿@page "/settings"
-@inject IJSRuntime JSRuntime
 @using Terraria_Wiki.Services
 <div class="page-anim page-content">
-	<header class="page-header">
-		<span class="page-title">应用偏好设置</span>
-	</header>
+    <header class="page-header">
+        <span class="page-title">应用偏好设置</span>
+    </header>
 
-	<div class="list-container setting-list">
+    <div class="list-container setting-list">
 
-		<div class="category-card">
-			<span class="category-title">个性化</span>
+        <div class="category-card">
+            <span class="category-title">个性化</span>
 
-			<div class="setting-item">
-				<div class="setting-info">
-					<span class="setting-name">默认颜色主题</span>
-				</div>
-				<select class="modern-select" @bind="AppTheme">
-					<option value="auto">跟随系统</option>
-					<option value="light">浅色模式</option>
-					<option value="dark">深色模式</option>
-				</select>
-			</div>
-			<div class="setting-item">
-				<div class="setting-info">
-					<span class="setting-name">内容颜色主题</span>
-				</div>
-				<select class="modern-select" @bind="ContentTheme">
-					<option value="auto">跟随界面</option>
-					<option value="original">Wiki原版</option>
-				</select>
-			</div>
-		</div>
+            <div class="setting-item">
+                <div class="setting-info">
+                    <span class="setting-name">默认颜色主题</span>
+                </div>
+                <select class="modern-select" @bind="AppTheme">
+                    <option value="auto">跟随系统</option>
+                    <option value="light">浅色模式</option>
+                    <option value="dark">深色模式</option>
+                </select>
+            </div>
+            <div class="setting-item">
+                <div class="setting-info">
+                    <span class="setting-name">内容颜色主题</span>
+                </div>
+                <select class="modern-select" @bind="ContentTheme">
+                    <option value="auto">跟随界面</option>
+                    <option value="original">Wiki原版</option>
+                </select>
+            </div>
+        </div>
 
-		<div class="category-card">
-			<span class="category-title">快捷键</span>
-			<div class="setting-item">
-				<div class="setting-info">
-					<span class="setting-name">侧键返回</span>
-					<span class="setting-desc">按鼠标侧键返回上一页</span>
-				</div>
-				<label class="toggle-switch">
-					<input type="checkbox" @bind="IsSideButtonBack">
-					<span class="slider"></span>
-				</label>
-			</div>
-		</div>
+        <div class="category-card">
+            <span class="category-title">快捷键</span>
+            <div class="setting-item">
+                <div class="setting-info">
+                    <span class="setting-name">侧键返回</span>
+                    <span class="setting-desc">按鼠标侧键返回上一页</span>
+                </div>
+                <label class="toggle-switch">
+                    <input type="checkbox" @bind="IsSideButtonBack">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            </div>
 
-		<div class="category-card">
-			<span class="category-title">搜索</span>
-			<div class="setting-item">
-				<div class="setting-info">
-					<span class="setting-name">最大搜索数量</span>
-				</div>
-				<select class="modern-select" @bind="MaxSearchItemCount">
-					<option value="25">25</option>
-					<option value="50">50（默认）</option>
-					<option value="75">75</option>
-					<option value="100">100</option>
-				</select>
-			</div>
-		</div>
+            <div class="category-card">
+                <span class="category-title">搜索</span>
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span class="setting-name">最大搜索数量</span>
+                    </div>
+                    <select class="modern-select" @bind="MaxSearchItemCount">
+                        <option value="25">25</option>
+                        <option value="50">50（默认）</option>
+                        <option value="75">75</option>
+                        <option value="100">100</option>
+                    </select>
+                </div>
+            </div>
 
-		<div class="category-card">
-			<span class="category-title">下载</span>
+            <div class="category-card">
+                <span class="category-title">下载</span>
 
-			<div class="setting-item">
-				<div class="setting-info">
-					<span class="setting-name">页面下载线程数</span>
-				</div>
-				<select class="modern-select" @bind="PageConcurrency">
-					<option value="1">1</option>
-					<option value="2">2（默认）</option>
-					<option value="3">3</option>
-					<option value="4">4</option>
-					<option value="5">5</option>
-				</select>
-			</div>
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span class="setting-name">页面下载线程数</span>
+                    </div>
+                    <select class="modern-select" @bind="PageConcurrency">
+                        <option value="1">1</option>
+                        <option value="2">2（默认）</option>
+                        <option value="3">3</option>
+                    </select>
+                </div>
 
-			<div class="setting-item">
-				<div class="setting-info">
-					<span class="setting-name">资源下载线程数</span>
-				</div>
-				<select class="modern-select" @bind="ResConcurrency">
-					<option value="1">1</option>
-					<option value="5">5</option>
-					<option value="10">10（默认）</option>
-					<option value="15">15</option>
-					<option value="20">20</option>
-				</select>
-			</div>
-			<div class="setting-item">
-				<div class="setting-info">
-					<span class="setting-name">错误重试次数</span>
-				</div>
-				<select class="modern-select" @bind="MaxRetryAttempts">
-					<option value="0">不重试</option>
-					<option value="1">1</option>
-					<option value="5">5（默认）</option>
-					<option value="10">10</option>
-					<option value="15">15</option>
-					<option value="20">20</option>
-				</select>
-			</div>
-		</div>
-		<div class="category-card">
-			<span class="category-title">数据库</span>
-			<div class="setting-item">
-				<div class="setting-info">
-					<span class="setting-name">导出数据</span>
-					<span class="setting-desc">导出当前数据到本地文件</span>
-				</div>
-				<button class="button setting-btn" @onclick="() => RunSafe(ExportData)">
-					@_exportMessage
-				</button>
-			</div>
-			<div class="setting-item">
-				<div class="setting-info">
-					<span class="setting-name">导入数据</span>
-					<span class="setting-desc">从本地文件导入数据库</span>
-				</div>
-				<button class="button setting-btn" @onclick="() => RunSafe(ImportData)">
-					@_importMessage
-				</button>
-			</div>
-		</div>
-		<div class="category-card">
-			<span class="category-title">关于</span>
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span class="setting-name">资源下载线程数</span>
+                    </div>
+                    <select class="modern-select" @bind="ResConcurrency">
+                        <option value="1">1</option>
+                        <option value="5">5</option>
+                        <option value="10">10（默认）</option>
+                        <option value="15">15</option>
+                        <option value="20">20</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span class="setting-name">错误重试次数</span>
+                    </div>
+                    <select class="modern-select" @bind="MaxRetryAttempts">
+                        <option value="0">不重试</option>
+                        <option value="1">1</option>
+                        <option value="5">5（默认）</option>
+                        <option value="10">10</option>
+                        <option value="15">15</option>
+                        <option value="20">20</option>
+                    </select>
+                </div>
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span class="setting-name">清理失败列表</span>
+                        <span class="setting-desc">删除当前Wiki所有失败记录。</span>
+                    </div>
+                    <button class="button setting-btn" @onclick="() => RunSafe(ClearFailedList)">
+                        清理
+                    </button>
+                </div>
 
-			<div class="setting-item">
-				<div class="setting-info">
-					<span class="setting-name">当前版本</span>
-					<span class="setting-desc">v@(AppVersion) (Build @BuildNumber)</span>
-				</div>
-				<button class="button setting-btn" @onclick="() => RunSafe(CheckUpdateCommand)">
-					@_checkUpdateMessage
-				</button>
-			</div>
-			<div class="setting-item">
-				<div class="setting-info">
-					<span class="setting-name">作者</span>
-					<span class="setting-desc">@Author</span>
-				</div>
-				<button class="button setting-btn" @onclick="GotoGithub">
-					<Icon Name="github" />
-				</button>
-			</div>
-		</div>
+            </div>
+            <div class="category-card">
+                <span class="category-title">数据库</span>
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span class="setting-name">导出数据</span>
+                        <span class="setting-desc">导出当前数据到本地文件</span>
+                    </div>
+                    <button class="button setting-btn" @onclick="() => RunSafe(ExportData)">
+                        @_exportMessage
+                    </button>
+                </div>
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span class="setting-name">导入数据</span>
+                        <span class="setting-desc">从本地文件导入数据库</span>
+                    </div>
+                    <button class="button setting-btn" @onclick="() => RunSafe(ImportData)">
+                        @_importMessage
+                    </button>
+                </div>
+            </div>
+            <div class="category-card">
+                <span class="category-title">关于</span>
 
-	</div>
-</div>
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span class="setting-name">当前版本</span>
+                        <span class="setting-desc">v@(AppVersion) (Build @BuildNumber)</span>
+                    </div>
+                    <button class="button setting-btn" @onclick="() => RunSafe(CheckUpdateCommand)">
+                        @_checkUpdateMessage
+                    </button>
+                </div>
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span class="setting-name">作者</span>
+                        <span class="setting-desc">@Author</span>
+                    </div>
+                    <button class="button setting-btn" @onclick="GotoGithub">
+                        <Icon Name="github" />
+                    </button>
+                </div>
+            </div>
+
+        </div>
+    </div>
 
 @code {
-	private string AppTheme
-	{
-		get => Preferences.Default.Get("AppTheme", "auto");
-		set
-		{
+    private string AppTheme
+    {
+        get => ThemeService.AppTheme;
+        set
+        {
+            _ = ThemeService.SetAppThemeAsync(value);
+        }
+    }
 
-			// 1. 存入 C# 存储（供原生 MAUI 代码使用）
-			Preferences.Default.Set("AppTheme", value);
-			// 2. 存入前端 localStorage（供 index.html 下次刚打开时瞬间读取）
-			JSRuntime.InvokeVoidAsync("localStorage.setItem", "app-theme", value);
-		}
-	}
-	private string ContentTheme
-	{
-		get => Preferences.Default.Get("ContentTheme", "auto");
-		set
-		{
+    private string ContentTheme
+    {
+        get => ThemeService.ContentTheme;
+        set
+        {
+            _ = ThemeService.SetContentThemeAsync(value);
+        }
+    }
 
-			// 1. 存入 C# 存储（供原生 MAUI 代码使用）
-			Preferences.Default.Set("AppTheme", value);
-			// 2. 存入前端 localStorage（供 index.html 下次刚打开时瞬间读取）
-			JSRuntime.InvokeVoidAsync("localStorage.setItem", "app-theme", value);
-		}
-	}
-	private bool IsSideButtonBack
-	{
-		// 页面一加载，就会执行 get，从存储中读取状态。如果之前没存过，默认返回 false（关）吗
-		get => Preferences.Default.Get("IsSideButtonBack", true);
+    private bool IsSideButtonBack
+    {
+        // 页面一加载，就会执行 get，从存储中读取状态。如果之前没存过，默认返回 false（关）吗
+        get => Preferences.Default.Get("IsSideButtonBack", true);
 
-		// 当用户点击开关时，会自动执行 set，把新的状态存入手机存储
-		set
-		{
-			Preferences.Default.Set("IsSideButtonBack", value);
-		}
-	}
-	private int PageConcurrency
-	{
-		get => Preferences.Default.Get("PageConcurrency", 2);
-		set
-		{
+        // 当用户点击开关时，会自动执行 set，把新的状态存入手机存储
+        set
+        {
+            Preferences.Default.Set("IsSideButtonBack", value);
+        }
+    }
+    private int PageConcurrency
+    {
+        get => Preferences.Default.Get("PageConcurrency", 2);
+        set
+        {
 
-			Preferences.Default.Set("PageConcurrency", value);
-		}
-	}
-	private int ResConcurrency
-	{
-		get => Preferences.Default.Get("ResConcurrency", 10);
-		set
-		{
+            Preferences.Default.Set("PageConcurrency", value);
+        }
+    }
+    private int ResConcurrency
+    {
+        get => Preferences.Default.Get("ResConcurrency", 10);
+        set
+        {
 
-			Preferences.Default.Set("ResConcurrency", value);
-		}
-	}
-	private int MaxRetryAttempts
-	{
-		get => Preferences.Default.Get("MaxRetryAttempts", 5);
-		set
-		{
+            Preferences.Default.Set("ResConcurrency", value);
+        }
+    }
+    private int MaxRetryAttempts
+    {
+        get => Preferences.Default.Get("MaxRetryAttempts", 5);
+        set
+        {
 
-			Preferences.Default.Set("MaxRetryAttempts", value);
-		}
-	}
-	private int MaxSearchItemCount
-	{
-		get => Preferences.Default.Get("MaxSearchItemCount", 50);
-		set
-		{
+            Preferences.Default.Set("MaxRetryAttempts", value);
+        }
+    }
+    private int MaxSearchItemCount
+    {
+        get => Preferences.Default.Get("MaxSearchItemCount", 50);
+        set
+        {
 
-			Preferences.Default.Set("MaxSearchItemCount", value);
-		}
-	}
-	private string AppVersion => $"{AppInfo.Current.Version.Major}.{AppInfo.Current.Version.Minor}.{AppInfo.Current.Version.Build}";
-	private string BuildNumber => AppInfo.Current.BuildString;
-	private string Author => "BigBearKing";
-	private string _checkUpdateMessage = "检查更新";
-	private string _exportMessage = "导出";
-	private string _importMessage = "选择文件";
-	private async Task RunSafe(Func<Task> action)
-	{
-		// 统一检查
-		if (AppState.IsProcessing)
-		{
-			await Application.Current.MainPage.DisplayAlert("提示", "请稍后，正在处理任务。", "确定");
-			return;
-		}
-		await action();
-	}
-	private async Task ExportData()
-	{
+            Preferences.Default.Set("MaxSearchItemCount", value);
+        }
+    }
+    private string AppVersion => $"{AppInfo.Current.Version.Major}.{AppInfo.Current.Version.Minor}.{AppInfo.Current.Version.Build}";
+    private string BuildNumber => AppInfo.Current.BuildString;
+    private string Author => "BigBearKing";
+    private string _checkUpdateMessage = "检查更新";
+    private string _exportMessage = "导出";
+    private string _importMessage = "选择文件";
+    private async Task RunSafe(Func<Task> action)
+    {
+        // 统一检查
+        if (AppState.IsProcessing)
+        {
+            await Application.Current.Windows[0].Page.DisplayAlertAsync("提示", "请稍后，正在处理任务。", "确定");
+            return;
+        }
+        await action();
+    }
+    private async Task ExportData()
+    {
 #if WINDOWS
-		AppState.IsProcessing = true;
-		_exportMessage = "正在导出...";
-		try
-		{
-			string exportPath = await AppService.PickFolderAsync();
-			if (string.IsNullOrEmpty(exportPath)) return;
-			await Task.Run(async () =>
-			{
-				await DataService.ExportData(exportPath);
-			});
+        AppState.IsProcessing = true;
+        _exportMessage = "正在导出...";
+        try
+        {
+            string exportPath = await AppService.PickFolderAsync();
+            if (string.IsNullOrEmpty(exportPath)) return;
+            await Task.Run(async () =>
+            {
+                await DataService.ExportData(exportPath);
+            });
 
 
-			Application.Current.MainPage.DisplayAlert("提示", "导出到本地文件夹完成。", "确定");
-		}catch(Exception ex)
-		{
-			Application.Current.MainPage.DisplayAlert("提示", $"发生错误，请重试。\n{ex}", "确定");
-		}
-		finally
-		{
-			AppState.IsProcessing = false;
-			_exportMessage = "导出";
-		}
+            Application.Current.Windows[0].Page.DisplayAlertAsync("提示", "导出到本地文件夹完成。", "确定");
+        }catch(Exception ex)
+        {
+            Application.Current.Windows[0].Page.DisplayAlertAsync("提示", $"发生错误，请重试。\n{ex}", "确定");
+        }
+        finally
+        {
+            AppState.IsProcessing = false;
+            _exportMessage = "导出";
+        }
 #elif ANDROID
-		Application.Current.MainPage.DisplayAlert("提示", $"手机版暂不支持此功能。", "确定");
+		Application.Current.Windows[0].Page.DisplayAlertAsync("提示", $"手机版暂不支持此功能。", "确定");
 #endif
 
 
-	}
-	private async Task ImportData()
-	{
-		AppState.IsProcessing = true;
-		_importMessage = "正在导入...";
-		try
-		{
-			var customFileType = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
-				{
-					{ DevicePlatform.WinUI, new[] { ".pkg" } },
-				});
-			string filePath = await AppService.PickFileAsync("请选择导入包", customFileType);
-			if (string.IsNullOrEmpty(filePath)) return;
-			await Task.Run(async () =>
-			{
-				await DataService.ImportData(filePath);
-			});
+    }
+    private async Task ImportData()
+    {
+        AppState.IsProcessing = true;
+        _importMessage = "正在导入...";
+        try
+        {
+            var customFileType = new FilePickerFileType(new Dictionary<DevicePlatform, IEnumerable<string>>
+                {
+                    { DevicePlatform.WinUI, new[] { ".pkg" } },
+                });
+            string filePath = await AppService.PickFileAsync("请选择导入包", customFileType);
+            if (string.IsNullOrEmpty(filePath)) return;
+            if (Application.Current?.Windows[0].Page is MainPage mainPage)
+            {
+                mainPage.ShowLoadingPopup("导入数据", "正在导入数据，请稍候...");
 
-			await Application.Current.MainPage.DisplayAlert("提示", "数据导入完成，即将重启。", "确定");
-			AppService.RestartApp();
-		}
-		catch (Exception ex)
-		{
-			Application.Current.MainPage.DisplayAlert("提示", $"发生错误，请重试。\n{ex}", "确定");
+            }
+            await Task.Run(async () =>
+            {
+                await DataService.ImportData(filePath);
+            });
 
-
-		}
-		finally
-		{
-			_importMessage = "选择文件";
-			AppState.IsProcessing = false;
-		}
-
-	}
-	private async Task CheckUpdateCommand()
-	{
-		AppState.IsProcessing = true;
-		_checkUpdateMessage = "正在检查...";
-		try
-		{
-
-			var updateService = new UpdateService();
-			var result = await updateService.CheckForUpdatesAsync();
-
-			if (result != null && result.IsUpdateAvailable)
-			{
-				// 发现新版本，弹出提示框
-				bool wantsToUpdate = await Application.Current.MainPage.DisplayAlert(
-					$"发现新版本: v{result.LatestVersion}",
-					$"更新内容：\n{result.ReleaseNotes}",
-					"前往下载",
-					"以后再说");
-
-				if (wantsToUpdate)
-				{
-					// 调用系统默认浏览器打开 GitHub Release 页面
-					await Browser.Default.OpenAsync(result.DownloadUrl, BrowserLaunchMode.SystemPreferred);
-				}
-			}
-			else
-			{
-
-				Application.Current.MainPage.DisplayAlert("提示", "当前已是最新版本。", "确定");
-			}
-		}
-		catch (Exception e)
-		{
-			Application.Current.MainPage.DisplayAlert("提示", $"检查失败：\n{e.Message}", "确定");
-		}
-		finally
-		{
-			AppState.IsProcessing = false;
-			_checkUpdateMessage = "检查更新";
-		}
+            AppService.RestartApp();
+        }
+        catch (Exception ex)
+        {
+            Application.Current.Windows[0].Page.DisplayAlertAsync("提示", $"发生错误，请重试。\n{ex}", "确定");
 
 
+        }
+        finally
+        {
+            _importMessage = "选择文件";
+            AppState.IsProcessing = false;
+        }
 
-	}
-	private async Task GotoGithub()
-	{
-		await Browser.Default.OpenAsync("https://github.com/BigBearKing/terraria-wiki-offline", BrowserLaunchMode.SystemPreferred);
-	}
+    }
+    private async Task CheckUpdateCommand()
+    {
+        AppState.IsProcessing = true;
+        _checkUpdateMessage = "正在检查...";
+        try
+        {
+
+            var updateService = new UpdateService();
+            var result = await updateService.CheckForUpdatesAsync();
+
+            if (result != null && result.IsUpdateAvailable)
+            {
+                // 发现新版本，弹出提示框
+                bool wantsToUpdate = await Application.Current.Windows[0].Page.DisplayAlertAsync(
+                    $"发现新版本: v{result.LatestVersion}",
+                    $"更新内容：\n{result.ReleaseNotes}",
+                    "前往下载",
+                    "以后再说");
+
+                if (wantsToUpdate)
+                {
+                    // 调用系统默认浏览器打开 GitHub Release 页面
+                    await Browser.Default.OpenAsync(result.DownloadUrl, BrowserLaunchMode.SystemPreferred);
+                }
+            }
+            else
+            {
+
+                Application.Current.Windows[0].Page.DisplayAlertAsync("提示", "当前已是最新版本。", "确定");
+            }
+        }
+        catch (Exception e)
+        {
+            Application.Current.Windows[0].Page.DisplayAlertAsync("提示", $"检查失败：\n{e.Message}", "确定");
+        }
+        finally
+        {
+            AppState.IsProcessing = false;
+            _checkUpdateMessage = "检查更新";
+        }
+
+
+
+    }
+    private async Task GotoGithub()
+    {
+        await Browser.Default.OpenAsync("https://github.com/BigBearKing/terraria-wiki-offline", BrowserLaunchMode.SystemPreferred);
+    }
+
+    private async Task ClearFailedList()
+    {
+        bool confirm = await Application.Current.Windows[0].Page.DisplayAlertAsync("确认清理", "此操作将删除所有下载失败的记录，无法恢复。确定要继续吗？", "确定", "取消");
+        if (confirm)
+        {
+            await DataService.ClearFailedListAsync();
+            await Application.Current.Windows[0].Page.DisplayAlertAsync("提示", "已清理失败列表。", "确定");
+        }
+    }
 }
 <style>
 
-	.setting-list {
-		padding: 12px 0;
-		gap: 12px;
-	}
-	/* --- 设置面板专属样式 --- */
-	.category-card {
-		background-color: var(--bg-color-secondary);
-		border-radius: 16px;
-		padding: 16px 20px;
-		display: flex;
-		flex-direction: column;
-		gap: 12px;
-	}
+    .setting-list {
+        padding: 12px 0;
+        gap: 12px;
+    }
+    /* --- 设置面板专属样式 --- */
+    .category-card {
+        background-color: var(--bg-color-secondary);
+        border-radius: 16px;
+        padding: 16px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
 
-	.category-title {
-		display: block;
-		font-size: 0.85rem;
-		font-weight: 600;
-		color: var(--text-secondary);
-		margin-bottom: 16px;
-		margin-left: 4px;
-	}
+    .category-title {
+        display: block;
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 16px;
+        margin-left: 4px;
+    }
 
-	.setting-item {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-	}
+    .setting-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
 
 
-	/* 文本信息区 */
-	.setting-info {
-		display: flex;
-		flex-direction: column;
-		gap: 4px;
-	}
+    /* 文本信息区 */
+    .setting-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
 
-	.setting-name {
-		font-size: 1rem;
-		font-weight: 500;
-		color: var(--text-primary);
-	}
+    .setting-name {
+        font-size: 1rem;
+        font-weight: 500;
+        color: var(--text-primary);
+    }
 
-	.setting-desc {
-		font-size: 0.8rem;
-		color: var(--text-secondary);
-	}
+    .setting-desc {
+        font-size: 0.8rem;
+        color: var(--text-secondary);
+    }
 
-	/* --- 现代化开关 (Toggle Switch) --- */
-	.toggle-switch {
-		position: relative;
-		display: inline-block;
-		width: 48px;
-		height: 26px;
-		flex-shrink: 0;
-	}
+    /* --- 现代化开关 (Toggle Switch) --- */
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 48px;
+        height: 26px;
+        flex-shrink: 0;
+    }
 
-		.toggle-switch input {
-			opacity: 0;
-			width: 0;
-			height: 0;
-		}
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
 
-	.slider {
-		position: absolute;
-		cursor: pointer;
-		top: 0;
-		left: 0;
-		right: 0;
-		bottom: 0;
-		background-color: var(--text-secondary);
-		transition: 0.3s;
-		border-radius: 26px;
-	}
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: var(--text-secondary);
+        transition: 0.3s;
+        border-radius: 26px;
+    }
 
-		.slider:before {
-			position: absolute;
-			content: "";
-			height: 20px;
-			width: 20px;
-			left: 3px;
-			bottom: 3px;
-			background-color: #ffffff;
-			transition: 0.3s;
-			border-radius: 50%;
-			box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-		}
-	/* 选中状态使用你的主色调变量 */
-	input:checked + .slider {
-		background-color: var(--blue-primary);
-	}
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: #ffffff;
+            transition: 0.3s;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+    /* 选中状态使用你的主色调变量 */
+    input:checked + .slider {
+        background-color: var(--blue-primary);
+    }
 
-		input:checked + .slider:before {
-			transform: translateX(22px);
-		}
+        input:checked + .slider:before {
+            transform: translateX(22px);
+        }
 
-	/* --- 现代化下拉选择框 (Select) --- */
-	.modern-select {
-		width: 125px;
-		appearance: none;
-		background-color: var(--bg-color);
-		color: var(--text-primary);
-		border: 1px solid var(--hover-bg);
-		padding: 8px 32px 8px 16px;
-		border-radius: 10px;
-		font-size: 0.9rem;
-		cursor: pointer;
-		outline: none;
-		transition: border-color 0.2s, box-shadow 0.2s;
-		background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E");
-		background-repeat: no-repeat;
-		background-position: right 8px center;
-		background-size: 16px;
-	}
+    /* --- 现代化下拉选择框 (Select) --- */
+    .modern-select {
+        width: 125px;
+        appearance: none;
+        background-color: var(--bg-color);
+        color: var(--text-primary);
+        border: 1px solid var(--hover-bg);
+        padding: 8px 32px 8px 16px;
+        border-radius: 10px;
+        font-size: 0.9rem;
+        cursor: pointer;
+        outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s;
+        background-image: url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E");
+        background-repeat: no-repeat;
+        background-position: right 8px center;
+        background-size: 16px;
+    }
 
-		.modern-select:hover {
-			border-color: var(--text-secondary);
-		}
+        .modern-select:hover {
+            border-color: var(--text-secondary);
+        }
 
-		.modern-select:focus {
-			border-color: var(--blue-primary);
-			box-shadow: 0 0 0 3px var(--blue-tertiary);
-		}
+        .modern-select:focus {
+            border-color: var(--blue-primary);
+            box-shadow: 0 0 0 3px var(--blue-tertiary);
+        }
 
-	.setting-btn {
-		display: flex;
-		justify-content: center; /* 水平居中 */
-		align-items: center;
-		padding: 6px 12px;
-		border-radius: 6px;
-		background-color: var(--hover-bg);
-		color: var(--text-primary);
-		font-size: 0.9rem;
-	}
+    .setting-btn {
+        display: flex;
+        justify-content: center; /* 水平居中 */
+        align-items: center;
+        padding: 6px 12px;
+        border-radius: 6px;
+        background-color: var(--hover-bg);
+        color: var(--text-primary);
+        font-size: 0.9rem;
+    }
 </style>

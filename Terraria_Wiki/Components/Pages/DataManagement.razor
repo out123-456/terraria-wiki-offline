@@ -21,8 +21,8 @@
 			{
 				<div class="manage-card button" @onclick="() => NavigateTo(wiki)">
 					<div class="manage-card-icon">
-						@* 这里可以用不同的图标或图片，暂用首字母代替 *@
-						<span>@wiki.Title.Substring(0, 1)</span>
+						<img src="images/@wiki.Title.Replace(" ", "_")/logo.png" style="width: 48px;
+						height: 48px;object-fit: contain;" />
 					</div>
 					<div class="manage-card-info">
 						<div class="manage-card-title">@wiki.Title</div>
@@ -55,7 +55,7 @@
 	{
 		if (item.Id != 1)
 		{
-			Application.Current.MainPage.DisplayAlert("提示", "尚未实现其他 Wiki 的数据管理页面。", "确定");
+			Application.Current.Windows[0].Page.DisplayAlertAsync("提示", "尚未实现其他 Wiki 的数据管理页面。", "确定");
 			System.Diagnostics.Debug.WriteLine("尚未实现其他 Wiki 的数据管理页面。");
 		}
 		else
@@ -95,8 +95,6 @@
 	.manage-card-icon {
 		width: 48px;
 		height: 48px;
-		background-color: var(--blue-primary);
-		color: white;
 		border-radius: 12px;
 		display: flex;
 		align-items: center;

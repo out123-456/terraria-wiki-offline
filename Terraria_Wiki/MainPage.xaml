@@ -4,11 +4,62 @@
              xmlns:local="clr-namespace:Terraria_Wiki"
              xmlns:components="clr-namespace:Terraria_Wiki.Components"
              x:Class="Terraria_Wiki.MainPage">
+    <Grid>
+        <BlazorWebView x:Name="blazorWebView" HostPage="wwwroot/index.html" StartPath="/home">
+            <BlazorWebView.RootComponents>
+                <RootComponent Selector="#app" ComponentType="{x:Type components:Routes}" />
+            </BlazorWebView.RootComponents>
+        </BlazorWebView>
 
-    <BlazorWebView x:Name="blazorWebView" HostPage="wwwroot/index.html" StartPath="/home">
-        <BlazorWebView.RootComponents>
-            <RootComponent Selector="#app" ComponentType="{x:Type components:Routes}" />
-        </BlazorWebView.RootComponents>
-    </BlazorWebView>
+        <ContentView x:Name="LoadingOverlay" 
+             BackgroundColor="{AppThemeBinding Light=White, Dark=#131313}">
+            <VerticalStackLayout VerticalOptions="Center" HorizontalOptions="Center" Spacing="15">
+
+                <ActivityIndicator x:Name="LoadingSpinner" 
+                           IsRunning="True" 
+                           Color="{AppThemeBinding Light=#0078d7, Dark=#4da8da}" />
+
+                <Label x:Name="LoadingText" 
+               Text="Loading..." 
+               FontSize="18"
+               TextColor="{AppThemeBinding Light=#6b7280, Dark=#9ca3af}" />
+
+            </VerticalStackLayout>
+        </ContentView>
+        <Grid x:Name="CustomAlertMask"
+  IsVisible="False"
+  BackgroundColor="#80000000" 
+  HorizontalOptions="Fill"
+  VerticalOptions="Fill">
+
+            <Frame VerticalOptions="Center"
+       HorizontalOptions="Center"
+       WidthRequest="280"
+       Padding="20"
+       CornerRadius="15"
+       BackgroundColor="{AppThemeBinding Light=#FFFFFF, Dark=#131313}"
+       HasShadow="True">
+
+                <VerticalStackLayout Spacing="15" HorizontalOptions="Center">
+
+                    <Label x:Name="AlertTitle"
+               Text="处理中"
+               FontSize="18"
+               FontAttributes="Bold"
+               HorizontalTextAlignment="Center" 
+                           TextColor="{AppThemeBinding Light=#6b7280, Dark=#9ca3af}"/>
+
+                    <Label x:Name="AlertMessage"
+               Text=""
+               FontSize="14"
+               HorizontalTextAlignment="Center"
+               TextColor="{AppThemeBinding Light=#6b7280, Dark=#9ca3af}" />
+
+                    <ActivityIndicator IsRunning="True" Color="{AppThemeBinding Light=#0078d7, Dark=#4da8da}" />
+                </VerticalStackLayout>
+            </Frame>
+        </Grid>
+    </Grid>
+
 
 </ContentPage>

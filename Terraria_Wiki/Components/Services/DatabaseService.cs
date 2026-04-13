@@ -73,6 +73,11 @@ public class DatabaseService
         await _db.ExecuteAsync(createSql);
     }
 
+    public SQLiteAsyncConnection GetConnection()
+    {
+        return _db; // 返回你类内部持有的异步连接对象
+    }
+
     public async Task CloseConnection()
     {
         await _db.ExecuteScalarAsync<string>("PRAGMA journal_mode = DELETE;");

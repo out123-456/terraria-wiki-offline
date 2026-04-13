@@ -38,6 +38,7 @@
 		<ApplicationDisplayVersion>0.2.0</ApplicationDisplayVersion>
 		<ApplicationVersion>$([System.DateTime]::Now.ToString('yyyyMMddHH'))</ApplicationVersion>
 		<Company>BigBearKingdom</Company>
+		
 		<Authors>BigBearKing</Authors>
 
         <!-- To develop, package, and publish an app to the Microsoft Store, see: https://aka.ms/MauiTemplateUnpackaged -->
@@ -48,7 +49,9 @@
         <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">24.0</SupportedOSPlatformVersion>
         <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
         <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
+        <DefaultLanguage>zh</DefaultLanguage>
     </PropertyGroup>
+
 	
 	<PropertyGroup Condition="$(TargetFramework.Contains('-windows'))">
 		<ApplicationIcon>Resources\AppIcon\appicon.ico</ApplicationIcon>
@@ -56,6 +59,16 @@
 <AndroidLinkMode>None</AndroidLinkMode>
 <AndroidEnableMultiDex>true</AndroidEnableMultiDex>
 	</PropertyGroup>
+	<ItemGroup>
+		<TrimmerRootAssembly Include="SQLite-net" />
+		<TrimmerRootAssembly Include="Terraria_Wiki" />
+		<TrimmerRootAssembly Include="Microsoft.AspNetCore.Components" />
+		<TrimmerRootAssembly Include="Microsoft.AspNetCore.Components.Web" />
+		<TrimmerRootAssembly Include="Microsoft.AspNetCore.Components.WebView" />
+		<TrimmerRootAssembly Include="Microsoft.AspNetCore.Components.WebView.Maui" />
+		<TrimmerRootAssembly Include="Microsoft.JSInterop" />
+		<RdXmlFile Include="rd.xml" />
+	</ItemGroup>
 
 	<ItemGroup>
 		<!-- App Icon -->

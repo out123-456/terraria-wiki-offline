@@ -19,7 +19,10 @@
 
 			@* --- 状态 A：已下载 (显示数据大小、更新按钮、页面列表) --- *@
 			<div class="title-placeholder">
-				<div class="placeholder-icon">📦</div>
+				<div class="placeholder-icon">
+					<img src="images/@_selectedWiki.Title.Replace(" ", "_")/logo.png" style="
+					height: 85px;object-fit: contain;" />
+				</div>
 				<h3>@(_selectedWiki.IsPageDownloaded? _selectedWiki.Title: "尚未获取数据")</h3>
 				<p>@(_selectedWiki.IsPageDownloaded? _selectedWiki.Description: "你需要下载基础数据包和资源文件才能离线浏览此 Wiki。")</p>
 			</div>
@@ -189,7 +192,7 @@
 		// 统一检查
 		if (AppState.IsProcessing)
 		{
-			await Application.Current.MainPage.DisplayAlert("提示", "请稍后，正在处理任务。", "确定");
+			await Application.Current.Windows[0].Page.DisplayAlertAsync("提示", "请稍后，正在处理任务。", "确定");
 			return;
 		}
 		await action();
@@ -230,7 +233,7 @@
 		{
 			await App.ContentDb.VacuumDatabaseAsync();
 			await AppService.RefreshWikiBookAsync(App.ManagerDb, App.ContentDb);
-			Application.Current.MainPage.DisplayAlert("提示", "未用资源清理完成。", "确定");
+			Application.Current.Windows[0].Page.DisplayAlertAsync("提示", "未用资源清理完成。", "确定");
 		}
 		finally
 		{
@@ -241,7 +244,7 @@
 
 	private async Task DeleteRes()
 	{
-		bool isConfirmed = await Application.Current.MainPage?.DisplayAlert("提示", "确认删除图片资源等数据吗？", "确定", "取消");
+		bool isConfirmed = await Application.Current.Windows[0].Page?.DisplayAlertAsync("提示", "确认删除图片资源等数据吗？", "确定", "取消");
 		if (isConfirmed)
 		{
 			AppState.IsProcessing = true;
@@ -253,7 +256,7 @@
 				await App.ManagerDb.SaveItemAsync(wikiBook);
 				await AppService.RefreshWikiBookAsync(App.ManagerDb, App.ContentDb);
 				StateHasChanged();
-				await Application.Current.MainPage.DisplayAlert("提示", "图片资源等数据删除完成。", "确定");
+				await Application.Current.Windows[0].Page.DisplayAlertAsync("提示", "图片资源等数据删除完成。", "确定");
 				AppService.RestartApp();
 			}
 			finally
@@ -266,7 +269,7 @@
 
 	private async Task Delete()
 	{
-		bool isConfirmed = await Application.Current.MainPage?.DisplayAlert("提示", "确认删除整个数据库（包含收藏、历史）吗？", "确定", "取消");
+		bool isConfirmed = await Application.Current.Windows[0].Page?.DisplayAlertAsync("提示", "确认删除整个数据库（包含收藏、历史）吗？", "确定", "取消");
 		if (isConfirmed)
 		{
 			AppState.IsProcessing = true;

@@ -25,7 +25,7 @@
     --blue-tertiary: rgba(0, 136, 255, 0.16);
 }
 /* --- 暗色模式 (Dark) --- */
-body.dark-theme {
+html.dark-theme {
     --bg-color: #131313;
     --bg-color-secondary: #1E1F21;
     --text-primary: #f9fafb;
@@ -48,16 +48,11 @@ body.dark-theme {
 *, *::before, *::after {
     box-sizing: border-box;
 }
-html {
-    background-color: var(--bg-color);
-    transition: background-color 0.35s;
-}
-body.is-switching-theme,
-/* 2. Body 里的所有后代元素 */
-body.is-switching-theme *,
-/* 3. 所有后代的伪元素 (before/after) */
-body.is-switching-theme *::before,
-body.is-switching-theme *::after {
+
+html.is-switching-theme,
+html.is-switching-theme *,
+html.is-switching-theme *::before,
+html.is-switching-theme *::after {
     /* 强制所有属性使用 0.3s 过渡 */
     pointer-events: none;
     transition: background-color 0.35s,color 0.35s !important;
@@ -87,27 +82,28 @@ body {
     overflow: hidden;
      /* 主题切换时的渐变动画 */
 }
-
-/*滚动条*/
+/* 1. 增加宽度，为“留白”腾出空间 */
 ::-webkit-scrollbar {
-    width: 7px; /* 纵向滚动条宽度 */
-    height: 7px; /* 横向滚动条高度 */
+    width: 14px; /* 从 7px 增加到 14px */
+    height: 14px;
 }
 
-/* 2. 滚动条轨道 (Track) - 设为透明，让背景透出来 */
+/* 2. 轨道保持透明 */
 ::-webkit-scrollbar-track {
     background: transparent;
 }
 
-/* 3. 滚动条滑块 (Thumb) - 核心样式 */
+/* 3. 核心：通过 border 制造间距 */
 ::-webkit-scrollbar-thumb {
-    background-color: var(--hover-bg); /* 半透明灰，适应任何背景 */
-    border-radius: 9999px; /* 胶囊圆角 */
-    /* 增加一个白色边框，可以制造出“悬浮”在轨道上的错觉 */
-    background-clip: content-box; /* 关键：让背景只渲染在内容区，配合边框实现留白 */
+    background-color: var(--hover-bg);
+    border-radius: 9999px;
+    /* 重点：添加厚厚的透明边框 */
+    /* 这里的 4px 就是滚动条距离容器边缘的“视觉距离” */
+    border: 4px solid transparent;
+    /* 必须配合这个属性，背景才不会蔓延到 border 下面 */
+    background-clip: content-box;
 }
 
-    /* 4. 鼠标悬停时变深 */
     ::-webkit-scrollbar-thumb:hover {
         background-color: var(--pressed-bg);
     }

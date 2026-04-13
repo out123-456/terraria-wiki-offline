@@ -61,12 +61,12 @@
 	</nav>
 
 	<div class="sidebar-footer">
-		<button class="nav-item button">
-			<div class="icon-container" style=@(AppState.IsProcessing ? "color:var(--blue-primary)" : "")>
-				<Icon Name="download"> </Icon>
+		<button class="nav-item button" style=@(AppState.IsProcessing ? "" : "display:none")>
+			<div class="icon-container @(AppState.IsProcessing?"rotating":"")" style=" @(AppState.IsProcessing?"color:var(--blue-primary)":"")">
+				<Icon Name="sync"> </Icon>
 			</div>
 			<span class="text-container">
-				@(AppState.IsProcessing ? "正在处理任务" : "无任务")
+				正在处理任务
 			</span>
 		</button>
 		<button class="nav-item theme-toggle button" @onclick="ToggleTheme">
@@ -115,7 +115,8 @@
 
 	private async Task ToggleTheme()
 	{
-		AppState.IsDarkTheme = await JSRuntime.InvokeAsync<bool>("toggleTheme");
+
+		AppState.IsDarkTheme = await JSRuntime.InvokeAsync<bool>("toggleTheme",ThemeService.ContentTheme);
 	}
 }
 <style>
@@ -233,5 +234,20 @@
 		padding: 12px;
 	}
 
+		/* 定义旋转动作 */
+	@@keyframes spin {
+		from {
+			transform: rotate(0deg);
+		}
+		to {
+			transform: rotate(360deg);
+		}
+	}
 
+	/* 创建一个类来应用这个动画 */
+	.rotating {
+		/* 2秒转一圈，线性速度，无限循环 */
+		animation: spin 2s infinite linear;
+    
+	}
 </style>

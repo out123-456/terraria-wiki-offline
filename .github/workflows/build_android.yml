@@ -37,42 +37,45 @@ jobs:
           [IO.File]::WriteAllBytes("$env:GITHUB_WORKSPACE\keystore.jks", $bytes)
 
       - name: Build per-ABI APKs (unsigned)
-        run: dotnet publish -f:net10.0-android -c:Release `
-          -p:AndroidPackageFormat=apk `
-          -p:AndroidCreatePackagePerAbi=true `
-          -p:JavaMaximumHeapSize=4G `
-          -p:AndroidEnableMultiDex=true `
-          -p:AndroidDexTool=d8 `
-          -p:AndroidEnableR8=true
-          -p:AndroidVersionCode=$vc
-          "-p:AndroidVersionCodePattern={versionCode}"
+        run: |
+          $vc = (Get-Date).ToString('yyyyMMddHH')
+          $common = @(
+            "-f:net10.0-android", "-c:Release",
+            "-p:AndroidPackageFormat=apk",
+            "-p:JavaMaximumHeapSize=4G",
+            "-p:AndroidEnableMultiDex=true",
+            "-p:AndroidDexTool=d8",
+            "-p:AndroidEnableR8=true",
+            "-p:ApplicationVersion=$vc",
+            "-p:AndroidVersionCode=$vc"
+          )
+          foreach ($rid in @("android-arm", "android-arm64", "android-x86", "android-x64")) {
+            Write-Host "Building $rid..."
+            dotnet publish @common -r $rid
+          }
 
       - name: Sign each APK
         run: |
-          $publishDir = "Terraria_Wiki/bin/Release/net10.0-android/publish"
           $ks = "$env:GITHUB_WORKSPACE\keystore.jks"
           $buildTools = (Get-ChildItem "$env:ANDROID_SDK_ROOT\build-tools" | Sort-Object Name -Descending | Select-Object -First 1).FullName
 
-          # 遍历所有未签名的 APK（文件名不含 -Signed）
-          Get-ChildItem $publishDir -Filter "*.apk" | Where-Object { $_.Name -notlike "*-Signed*" } | ForEach-Object {
-            $unsignedApk = $_.FullName
-            $signedApk = $_.DirectoryName + "\" + ($_.BaseName -replace "\.apk$", "") + "-Signed.apk"
-            
-            Write-Host "Signing $unsignedApk -> $signedApk"
-            & "$buildTools\zipalign.exe" -f 4 $unsignedApk $signedApk
-            & "$buildTools\apksigner.bat" sign `
-              --ks $ks `
-              --ks-pass pass:${{ secrets.KEYSTORE_PASSWORD }} `
-              --key-pass pass:${{ secrets.KEY_PASSWORD }} `
-              --ks-key-alias ${{ secrets.KEY_ALIAS }} `
-              $signedApk
-              
-            # 删除未签名的原始 APK
-            Remove-Item $unsignedApk -Force
-          }
+          Get-ChildItem "Terraria_Wiki/bin/Release/net10.0-android" -Recurse -Filter "*.apk" |
+            Where-Object { $_.Name -notlike "*-Signed*" } | ForEach-Object {
+              $unsignedApk = $_.FullName
+              $signedApk = $_.DirectoryName + "\" + $_.BaseName + "-Signed.apk"
+              Write-Host "Signing $unsignedApk -> $signedApk"
+              & "$buildTools\zipalign.exe" -f 4 $unsignedApk $signedApk
+              & "$buildTools\apksigner.bat" sign `
+                --ks $ks `
+                --ks-pass pass:${{ secrets.KEYSTORE_PASSWORD }} `
+                --key-pass pass:${{ secrets.KEY_PASSWORD }} `
+                --ks-key-alias ${{ secrets.KEY_ALIAS }} `
+                $signedApk
+              Remove-Item $unsignedApk -Force
+            }
 
       - name: Upload all signed APKs
         uses: actions/upload-artifact@v4
         with:
           name: android-release-apks
-          path: 'Terraria_Wiki/bin/Release/net10.0-android/publish/*-Signed.apk'
+          path: 'Terraria_Wiki/bin/Release/net10.0-android/**/*-Signed.apk'

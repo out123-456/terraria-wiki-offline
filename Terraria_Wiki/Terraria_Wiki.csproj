@@ -60,15 +60,15 @@
 <AndroidEnableMultiDex>true</AndroidEnableMultiDex>
 	</PropertyGroup>
 	<ItemGroup>
-		<TrimmerRootAssembly Include="SQLite-net" />
-		<TrimmerRootAssembly Include="Terraria_Wiki" />
-		<TrimmerRootAssembly Include="Microsoft.AspNetCore.Components" />
-		<TrimmerRootAssembly Include="Microsoft.AspNetCore.Components.Web" />
-		<TrimmerRootAssembly Include="Microsoft.AspNetCore.Components.WebView" />
-		<TrimmerRootAssembly Include="Microsoft.AspNetCore.Components.WebView.Maui" />
-		<TrimmerRootAssembly Include="Microsoft.JSInterop" />
+		<TrimmerRootAssembly Include="SQLite-net" RootMode="All" />
+		<TrimmerRootAssembly Include="Terraria_Wiki" RootMode="All" />
+		<TrimmerRootAssembly Include="Microsoft.AspNetCore.Components" RootMode="All" />
+		<TrimmerRootAssembly Include="Microsoft.AspNetCore.Components.Web" RootMode="All" />
+		<TrimmerRootAssembly Include="Microsoft.AspNetCore.Components.WebView" RootMode="All" />
+		<TrimmerRootAssembly Include="Microsoft.AspNetCore.Components.WebView.Maui" RootMode="All" />
+		<TrimmerRootAssembly Include="Microsoft.JSInterop" RootMode="All" />
 		<RdXmlFile Include="rd.xml" />
-	</ItemGroup>
+</ItemGroup>
 
 	<ItemGroup>
 		<!-- App Icon -->

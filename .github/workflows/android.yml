@@ -64,10 +64,11 @@ env:
   DOTNET_ROOT: ${{ github.workspace }}/.dotnet
   TFM: net11.0-android37.0
   PROJECT: Terraria_Wiki/Terraria_Wiki.csproj
-  # 两个 RID 用分号分隔.env 的值不经过 shell,分号原样传给 MSBuild 的列表属性.
-  # ★ 不要写成 %3B:GitHub Actions 的 env 不做 URL 解码,那样会被当成一个名为
-  #   "android-arm64%3Bandroid-x64" 的 RID,报 NETSDK1083(已在 2026-11 踩过).
-  RIDS: "android-arm64;android-x64"
+  # 不再显式传 RuntimeIdentifiers:.NET 9 起 Android 的默认值就是
+  # android-arm64;android-x64(= arm64-v8a / x86_64),正是我们要的两套.
+  # ★ 别在命令行传这个属性:分号在 -p: 里会被 MSBuild 当成属性分隔符,
+  #   报 MSB1006 "Switch: android-x64";写成 %3B 又会被 NETSDK1083 当成 RID 名字
+  #   (两条都在 2026-11 踩过).
 
 jobs:
   build:
@@ -157,7 +158,6 @@ jobs:
 
           dotnet publish "$PROJECT" \
             -f "$TFM" -c Release \
-            -p:RuntimeIdentifiers="$RIDS" \
             -p:AndroidPackageFormats=apk \
             -p:AndroidSdkDirectory="$SDK_DIR" \
             -p:JavaSdkDirectory="$JAVA_HOME" \
@@ -177,7 +177,6 @@ jobs:
 
           dotnet publish "$PROJECT" \
             -f "$TFM" -c Release \
-            -p:RuntimeIdentifiers="$RIDS" \
             -p:AndroidCreatePackagePerAbi=true \
             -p:AndroidPackageFormats=apk \
             -p:AndroidSdkDirectory="$SDK_DIR" \

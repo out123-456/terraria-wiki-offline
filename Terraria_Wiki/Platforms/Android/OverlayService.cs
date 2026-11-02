@@ -10,6 +10,7 @@ using AndroidX.Core.App;
 using Microsoft.Maui.Storage;
 using Terraria_Wiki.Services;
 using AndroidApplication = Android.App.Application;
+using View = Android.Views.View;
 
 namespace Terraria_Wiki.Platforms.Android;
 
@@ -54,13 +55,13 @@ public class OverlayService : Service
     private WindowManager? _wm;
 
     private ImageView? _ballView;
-    private WindowManager.LayoutParams? _ballLp;
+    private WindowManagerLayoutParams? _ballLp;
 
     private FrameLayout? _panel;
     private LinearLayout? _column;
     private LinearLayout? _bar;
     private TextView? _titleView;
-    private WindowManager.LayoutParams? _panelLp;
+    private WindowManagerLayoutParams? _panelLp;
     private bool _barAtBottom;
 
     private int _screenW;
@@ -859,10 +860,10 @@ public class OverlayService : Service
     // 窗口参数与球图案
     // ============================================================
 
-    private WindowManager.LayoutParams CreateLayoutParams(
+    private WindowManagerLayoutParams CreateLayoutParams(
         int w, int h, WindowManagerFlags flags)
     {
-        var lp = new WindowManager.LayoutParams(
+        var lp = new WindowManagerLayoutParams(
             w, h,
             (int)WindowManagerTypes.ApplicationOverlay,
             flags,

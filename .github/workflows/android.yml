@@ -1,0 +1,282 @@
+# 只为 Android 出包:Linux runner,单 TFM,不还原 iOS / MacCatalyst / Windows.
+#
+# ★ ABI 的真实情况(2026-11 核对 .NET 11 文档):
+#   .NET 9 起 Android 默认的 $(RuntimeIdentifiers) 就只剩 64 位这一对:
+#     android-arm64 → arm64-v8a(真机)
+#     android-x64   → x86_64(模拟器)
+#   .NET 8 及更早才是 arm64 + armv7 + x86 + x64 四套,那是旧资料.
+#   .NET 11 仍支持 android-arm(armv7),但不在默认集里,也不建议再加:
+#   2020 年后的真机基本只认 arm64,Play 也从 2019 起要求 64 位.
+#   注意 $(AndroidSupportedAbis) 从 .NET 6 起就废弃了(XA0036),只能用 RuntimeIdentifiers.
+#
+# 本流程产出 3 个包(两次 publish,第二次复用编译产物,只重跑打包):
+#   1) arm64 分包   —— 真机装这个,体积最小
+#   2) x86_64 分包  —— 仅模拟器有意义
+#   3) 总包         —— 两个 ABI 都含,谁都能装,体积最大
+#   分包靠 AndroidCreatePackagePerAbi(按 ABI 拆,不是按 RID),
+#   总包就是不拆包的那次构建.
+#
+# 体积策略:
+#   - 关掉 Profiled AOT:Release 默认会生成 libaot-*.so,体积换启动速度,
+#     离线 Wiki 阅读器不靠秒开吃饭.
+#   - 保持默认的 partial 裁剪(PublishTrimmed=true / TrimMode=partial).
+#     ★ 不要随手改成 Full:BlazorWebView 的 IPC 走反射序列化,sqlite-net 的 ORM 也靠反射,
+#     Full 必须额外配 TrimmerRootAssembly,否则装上去才发现"一直 loading".
+#   - Resources/Raw/Web 约 10MB(8 个 Wiki 的站内样式 + MathJax)是功能内容,构建期裁不掉.
+#
+# 签名:不配 secrets 时用 runner 自动生成的 debug keystore 签 Release 包,
+#      能直接安装,但每次 runner 都是新 keystore,不能覆盖安装旧版本.
+name: Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      aot:
+        description: "启用 Profiled AOT(体积增大,启动略快)"
+        type: boolean
+        default: false
+  push:
+    branches:
+      - main
+      - feature/mobile-floating-window
+    tags:
+      - "v*"
+    paths:
+      - "Terraria_Wiki/**"
+      - "global.json"
+      - ".github/workflows/android.yml"
+  pull_request:
+    paths:
+      - "Terraria_Wiki/**"
+      - "global.json"
+      - ".github/workflows/android.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+  DOTNET_NOLOGO: "1"
+  DOTNET_ROOT: ${{ github.workspace }}/.dotnet
+  TFM: net11.0-android37.0
+  PROJECT: Terraria_Wiki/Terraria_Wiki.csproj
+  # 两个 RID 用 %3B 转义:MSBuild 命令行里裸分号会被当成下一个属性的分隔符.
+  RIDS: android-arm64%3Bandroid-x64
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # SDK 版本以 global.json 为准(11.0.100-rc.3),不写死在 workflow 里,
+      # 以后升级 SDK 只改 global.json 一处.
+      - name: 读取 global.json 的 SDK 版本
+        id: sdk
+        run: |
+          set -euo pipefail
+          v=$(jq -r '.sdk.version // empty' global.json)
+          echo "version=$v" >> "$GITHUB_OUTPUT"
+          echo "将安装 .NET SDK: $v"
+
+      - name: 缓存 SDK 与 NuGet 包
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.dotnet
+            ~/.nuget/packages
+          key: dotnet-${{ steps.sdk.outputs.version }}-${{ runner.os }}-v1
+
+      # setup-dotnet 的 release 索引不含 rc 版 SDK,预览版只能用官方脚本装.
+      # 装不上指定版本时退回到 11.0 通道的最新版(global.json 的 rollForward 允许).
+      - name: 安装 .NET SDK
+        run: |
+          set -euo pipefail
+          if [ -x "$DOTNET_ROOT/dotnet" ]; then
+            "$DOTNET_ROOT/dotnet" --version && exit 0
+          fi
+          curl -sSL https://dot.net/v1/dotnet-install.sh -o /tmp/dotnet-install.sh
+          chmod +x /tmp/dotnet-install.sh
+          bash /tmp/dotnet-install.sh --version "${{ steps.sdk.outputs.version }}" \
+               --install-dir "$DOTNET_ROOT" --no-path \
+            || bash /tmp/dotnet-install.sh --channel 11.0 \
+               --install-dir "$DOTNET_ROOT" --no-path
+          echo "$DOTNET_ROOT" >> "$GITHUB_PATH"
+          "$DOTNET_ROOT/dotnet" --version
+
+      # MAUI rc.2 要求 JDK >= 21 < 26.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: 安装 MAUI Android 工作负载
+        run: |
+          set -euo pipefail
+          export PATH="$DOTNET_ROOT:$PATH"
+          # 要 maui-android,不是 android:后者只含 Android SDK 那层,缺 MAUI 的 targets,
+          # 构建会直接报 NETSDK1147.
+          #
+          # 仓库当前是 SDK 11.0.100-rc.3 + MAUI rc.2 的工作负载(csproj 注释里写着
+          # android 37.2.0-rc.2.84).若 rc.3 的默认清单解不出可安装的包,退回到
+          # MAUI rc.2 发布的那个 workload set 版本——两者同属 11.0.100 band,可以混用.
+          dotnet workload install maui-android \
+            || dotnet workload install maui-android --version 11.0.100-rc.2.26513.2
+          dotnet workload list
+
+      # runner 自带的 Android SDK 通常缺 API 37,用 SDK 自己的 target 按 workload
+      # 声明的版本补齐,比手写 sdkmanager 包名更抗版本变化.
+      - name: 补齐 Android SDK
+        run: |
+          set -euo pipefail
+          export PATH="$DOTNET_ROOT:$PATH"
+          SDK_DIR="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          echo "Android SDK: $SDK_DIR"
+          sudo chown -R "$(id -u):$(id -g)" "$SDK_DIR" || true
+          dotnet build "$PROJECT" -f "$TFM" -t:InstallAndroidDependencies \
+            -p:AcceptAndroidSDKLicenses=true \
+            -p:AndroidSdkDirectory="$SDK_DIR" \
+            -p:JavaSdkDirectory="$JAVA_HOME"
+
+      # 第一次 publish:不拆包 → 一个支持 arm64 + x86_64 的总包.
+      - name: 编译总包
+        run: |
+          set -euo pipefail
+          export PATH="$DOTNET_ROOT:$PATH"
+          SDK_DIR="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          args=(-p:RunAOTCompilation=false -p:AndroidEnableProfiledAot=false)
+          if [ "${{ inputs.aot }}" = "true" ]; then args=(); fi
+
+          dotnet publish "$PROJECT" \
+            -f "$TFM" -c Release \
+            -p:RuntimeIdentifiers="$RIDS" \
+            -p:AndroidPackageFormats=apk \
+            -p:AndroidSdkDirectory="$SDK_DIR" \
+            -p:JavaSdkDirectory="$JAVA_HOME" \
+            -p:ContinuousIntegrationBuild=true \
+            -o dist/universal \
+            "${args[@]}"
+
+      # 第二次 publish:同一组 RID,只是多打开"按 ABI 拆包".
+      # 编译产物与 obj 都复用,实际只重跑打包与签名,几分钟的事.
+      - name: 编译分包
+        run: |
+          set -euo pipefail
+          export PATH="$DOTNET_ROOT:$PATH"
+          SDK_DIR="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          args=(-p:RunAOTCompilation=false -p:AndroidEnableProfiledAot=false)
+          if [ "${{ inputs.aot }}" = "true" ]; then args=(); fi
+
+          dotnet publish "$PROJECT" \
+            -f "$TFM" -c Release \
+            -p:RuntimeIdentifiers="$RIDS" \
+            -p:AndroidCreatePackagePerAbi=true \
+            -p:AndroidPackageFormats=apk \
+            -p:AndroidSdkDirectory="$SDK_DIR" \
+            -p:JavaSdkDirectory="$JAVA_HOME" \
+            -p:ContinuousIntegrationBuild=true \
+            --no-restore \
+            -o dist/perabi \
+            "${args[@]}"
+
+      # 收集与改名:三个来源目录里挑出各自的 apk,统一命名,再算 sha256.
+      - name: 收集产物
+        id: collect
+        run: |
+          set -euo pipefail
+          mkdir -p artifact
+          ver=$(grep -oPm1 '(?<=<ApplicationDisplayVersion>)[^<]+' Terraria_Wiki/Terraria_Wiki.csproj || echo 0.0.0)
+
+          # 总包:universal 目录里没有 ABI 后缀的那个
+          # ★ 这里一律用 if 而不是 "test && cmd":后者在条件为假时返回 1,
+          # set -e 会直接终止整个 step(签名/未签名的文件名差异就是靠这个回退的).
+          universal=$(find dist/universal -name '*-Signed.apk' ! -name '*-arm64-v8a-*' ! -name '*-x86_64-*' -print -quit)
+          if [ -z "$universal" ]; then
+            universal=$(find dist/universal -name '*.apk' ! -name '*-arm64-v8a-*' ! -name '*-x86_64-*' -print -quit)
+          fi
+
+          arm64=$(find dist/perabi -name '*-arm64-v8a-Signed.apk' -print -quit)
+          if [ -z "$arm64" ]; then
+            arm64=$(find dist/perabi -name '*-arm64-v8a.apk' -print -quit)
+          fi
+
+          x64=$(find dist/perabi -name '*-x86_64-Signed.apk' -print -quit)
+          if [ -z "$x64" ]; then
+            x64=$(find dist/perabi -name '*-x86_64.apk' -print -quit)
+          fi
+
+          for pair in "arm64:$arm64" "x64:$x64" "universal:$universal"; do
+            tag=${pair%%:*}
+            src=${pair#*:}
+            if [ -z "$src" ]; then
+              echo "缺少 $tag 包,列出目录:" >&2
+              find dist -maxdepth 3 -name '*.apk' >&2 || true
+              exit 1
+            fi
+            cp "$src" "artifact/terraria-wiki-${ver}-${tag}.apk"
+          done
+
+          ls -lh artifact
+          (cd artifact && sha256sum *.apk > SHA256SUMS.txt && cat SHA256SUMS.txt)
+          echo "dir=artifact" >> "$GITHUB_OUTPUT"
+
+      # 把每个 apk 拆开按目录统计,直接回答"体积到底堆在哪".
+      # 本机不能编译时,这份报告是唯一能验证裁剪是否生效的东西.
+      - name: 体积构成报告
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import collections, glob, os, zipfile
+
+          lines = []
+          for path in sorted(glob.glob('artifact/*.apk')):
+              with zipfile.ZipFile(path) as z:
+                  buckets = collections.Counter()
+                  for i in z.infolist():
+                      parts = i.filename.split('/')
+                      if parts[0] == 'lib' and len(parts) > 2:
+                          key = f"lib/{parts[1]}"
+                      elif len(parts) > 1 and parts[0] in ('assemblies', 'assets', 'res'):
+                          key = f"{parts[0]}/{parts[1]}"
+                      else:
+                          key = parts[0]
+                      buckets[key] += i.compress_size
+                  total = sum(buckets.values()) or 1
+                  abis = '+'.join(sorted({k.split('/')[1] for k in buckets if k.startswith('lib/')})) or '无'
+
+              lines.append(f'#### `{os.path.basename(path)}`  ({total / 1048576:.1f} MB, ABI: {abis})')
+              lines.append('')
+              lines.append('| 目录 | 压缩后 | 占比 |')
+              lines.append('| --- | ---: | ---: |')
+              for k, v in buckets.most_common(12):
+                  lines.append(f'| `{k}` | {v / 1048576:.1f} MB | {v * 100 / total:.1f}% |')
+              lines.append('')
+
+          report = '\n'.join(lines)
+          print(report)
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a', encoding='utf-8') as f:
+              f.write('### APK 体积构成\n\n' + report + '\n')
+          PY
+
+      - name: 上传产物
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: |
+            artifact/*.apk
+            artifact/SHA256SUMS.txt
+          if-no-files-found: error
+
+      - name: 打 tag 时附到 Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            artifact/*.apk
+            artifact/SHA256SUMS.txt

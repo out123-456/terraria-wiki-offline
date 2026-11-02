@@ -10,7 +10,11 @@ using AndroidX.Core.App;
 using Microsoft.Maui.Storage;
 using Terraria_Wiki.Services;
 using AndroidApplication = Android.App.Application;
+using Android.Runtime;
 using View = Android.Views.View;
+using Color = Android.Graphics.Color;
+using Rect = Android.Graphics.Rect;
+using Paint = Android.Graphics.Paint;
 
 namespace Terraria_Wiki.Platforms.Android;
 
@@ -52,7 +56,7 @@ public class OverlayService : Service
     private enum Mode { None, Ball, Panel }
 
     private Mode _mode;
-    private WindowManager? _wm;
+    private IViewManager? _wm;
 
     private ImageView? _ballView;
     private WindowManagerLayoutParams? _ballLp;
@@ -104,7 +108,7 @@ public class OverlayService : Service
         _minW = Dp(MinPanelWidthDp);
         _minH = Dp(MinPanelHeightDp);
         _touchSlop = ViewConfiguration.Get(this)!.ScaledTouchSlop;
-        _wm = (WindowManager)GetSystemService(WindowService)!;
+        _wm = GetSystemService(WindowService)!.JavaCast<IViewManager>();
         _appState = IPlatformApplication.Current?.Services.GetService<AppState>();
     }
 
@@ -351,7 +355,7 @@ public class OverlayService : Service
 
     private void ShowPanelCore(int x, int y, int w, int h)
     {
-        var column = new LinearLayout(this) { Orientation = LinearLayout.Orientation.Vertical };
+        var column = new LinearLayout(this) { Orientation = Orientation.Vertical };
         var bar = BuildBar();
         var content = BuildContent();
 
@@ -409,7 +413,7 @@ public class OverlayService : Service
 
     private LinearLayout BuildBar()
     {
-        var bar = new LinearLayout(this) { Orientation = LinearLayout.Orientation.Horizontal };
+        var bar = new LinearLayout(this) { Orientation = Orientation.Horizontal };
         var bg = new GradientDrawable();
         bg.SetColor(App.AppStateManager?.IsDarkTheme == true
             ? Color.Argb(240, 32, 32, 34)
@@ -426,11 +430,11 @@ public class OverlayService : Service
 
         var title = new TextView(this)
         {
-            Ellipsize = Android.Text.TextUtils.TruncateAt.End,
-            MaxLines = 1,
+            Ellipsize = global::Android.Text.TextUtils.TruncateAt.End,
             Gravity = GravityFlags.Center
         };
-        title.SetTextSize(Android.Util.ComplexUnitType.Sp, 12);
+        title.SetMaxLines(1);
+        title.SetTextSize(global::Android.Util.ComplexUnitType.Sp, 12);
         title.SetTextColor(App.AppStateManager?.IsDarkTheme == true
             ? Color.Argb(255, 230, 230, 230)
             : Color.Argb(255, 40, 40, 40));
@@ -454,7 +458,7 @@ public class OverlayService : Service
             Clickable = true,
             Focusable = false
         };
-        button.SetTextSize(Android.Util.ComplexUnitType.Sp, 15);
+        button.SetTextSize(global::Android.Util.ComplexUnitType.Sp, 15);
         button.SetTextColor(danger
             ? Color.Argb(255, 220, 80, 80)
             : (App.AppStateManager?.IsDarkTheme == true
@@ -484,7 +488,7 @@ public class OverlayService : Service
             Text = CurrentPageTitle(),
             Gravity = GravityFlags.Center
         };
-        hint.SetTextSize(Android.Util.ComplexUnitType.Sp, 16);
+        hint.SetTextSize(global::Android.Util.ComplexUnitType.Sp, 16);
         hint.SetTextColor(App.AppStateManager?.IsDarkTheme == true
             ? Color.Argb(255, 200, 200, 200)
             : Color.Argb(255, 90, 90, 90));
@@ -865,7 +869,7 @@ public class OverlayService : Service
     {
         var lp = new WindowManagerLayoutParams(
             w, h,
-            (int)WindowManagerTypes.ApplicationOverlay,
+            WindowManagerTypes.ApplicationOverlay,
             flags,
             Format.Translucent)
         {

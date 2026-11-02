@@ -89,6 +89,27 @@
                         @GetPermissionButtonText(AndroidPermissionType.Background)
                     </ActionButton>
                 </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span class="setting-name">@Loc.Get("Settings.FloatingWindow")</span>
+                        <span class="setting-desc">@Loc.Get("Settings.FloatingWindowDesc")</span>
+                    </div>
+                    <ActionButton Disabled="IsPermissionGranted(AndroidPermissionType.FloatingWindow)"
+                                  OnClick="() => RequestPermissionAsync(AndroidPermissionType.FloatingWindow)">
+                        @GetPermissionButtonText(AndroidPermissionType.FloatingWindow)
+                    </ActionButton>
+                </div>
+
+                <div class="setting-item">
+                    <div class="setting-info">
+                        <span class="setting-name">@Loc.Get("Settings.IgnoreCutout")</span>
+                        <span class="setting-desc">@Loc.Get("Settings.IgnoreCutoutDesc")</span>
+                    </div>
+                    <div class="setting-controls">
+                        <SwitchToggle Checked="IsIgnoreCutout" CheckedChanged="SetIgnoreCutoutAsync" />
+                    </div>
+                </div>
             </div>
         }
         @if (AppState.IsWindows)
@@ -319,6 +340,7 @@
         Loc.OnChange += RefreshUI;
 #if ANDROID
         AndroidPermissionService.PermissionStateChanged += RefreshUI;
+        _ignoreCutout = Preferences.Default.Get("Overlay.IgnoreCutout", true);
 #endif
     }
 
@@ -407,6 +429,24 @@
     private void RefreshUI()
     {
         InvokeAsync(StateHasChanged);
+    }
+
+    private bool _ignoreCutout = true;
+
+    private bool IsIgnoreCutout => _ignoreCutout;
+
+    private Task SetIgnoreCutoutAsync(bool value)
+    {
+        _ignoreCutout = value;
+        Preferences.Default.Set("Overlay.IgnoreCutout", value);
+
+#if ANDROID
+        // 刘海模式要在 Activity 创建时定,改完必须重建;用户已经接受这个代价.
+        if (Microsoft.Maui.ApplicationModel.Platform.CurrentActivity is Android.App.Activity activity)
+            activity.Recreate();
+#endif
+
+        return InvokeAsync(StateHasChanged);
     }
 
     private bool IsPermissionGranted(AndroidPermissionType permission)

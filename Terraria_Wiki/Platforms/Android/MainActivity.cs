@@ -36,9 +36,19 @@ namespace Terraria_Wiki
             Window.SetSoftInputMode(SoftInput.AdjustNothing);
             AndroidX.Core.View.WindowCompat.SetDecorFitsSystemWindows(Window, false);
             WindowCompat.SetDecorFitsSystemWindows(Window, false);
-            if (Build.VERSION.SdkInt >= BuildVersionCodes.P) // Android 9.0+
+            // 刘海模式:设置页那个开关决定内容是否延伸进挖孔区(改完会 Recreate 重建).
+            var ignoreCutout = Microsoft.Maui.Storage.Preferences.Default.Get("Overlay.IgnoreCutout", true);
+            if (Build.VERSION.SdkInt >= BuildVersionCodes.R)
             {
-                Window.Attributes.LayoutInDisplayCutoutMode = LayoutInDisplayCutoutMode.ShortEdges;
+                Window.Attributes.LayoutInDisplayCutoutMode = ignoreCutout
+                    ? LayoutInDisplayCutoutMode.Always
+                    : LayoutInDisplayCutoutMode.Default;
+            }
+            else if (Build.VERSION.SdkInt >= BuildVersionCodes.P)
+            {
+                Window.Attributes.LayoutInDisplayCutoutMode = ignoreCutout
+                    ? LayoutInDisplayCutoutMode.ShortEdges
+                    : LayoutInDisplayCutoutMode.Default;
             }
             if (Window != null)
             {

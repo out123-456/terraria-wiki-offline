@@ -16,6 +16,7 @@ public static class AndroidPermissionService
             AndroidPermissionType.Network => IsNetworkGranted(),
             AndroidPermissionType.Notifications => IsNotificationGranted(),
             AndroidPermissionType.Background => IsBackgroundGranted(),
+            AndroidPermissionType.FloatingWindow => CanDrawOverlays(),
             _ => false
         };
 
@@ -28,6 +29,11 @@ public static class AndroidPermissionService
                 break;
             case AndroidPermissionType.Background:
                 RequestBackgroundPermission();
+                break;
+            case AndroidPermissionType.FloatingWindow:
+                // SYSTEM_ALERT_WINDOW 是特殊权限:没有运行时弹窗,只能跳到系统的
+                // "显示在其他应用上层"页面由用户手动打开.
+                RequestOverlayPermission();
                 break;
             case AndroidPermissionType.Network:
                 // INTERNET 是 normal 权限：正常情况下安装即授予，系统里既没有运行时弹窗也没有开关，
@@ -79,6 +85,20 @@ public static class AndroidPermissionService
 
         var powerManager = (PowerManager)AndroidApplication.Context.GetSystemService(Context.PowerService)!;
         return powerManager.IsIgnoringBatteryOptimizations(AndroidApplication.Context.PackageName);
+    }
+
+    private static bool CanDrawOverlays() =>
+        Android.Provider.Settings.CanDrawOverlays(AndroidApplication.Context);
+
+    private static void RequestOverlayPermission()
+    {
+        if (CanDrawOverlays())
+            return;
+
+        var intent = new Intent(Android.Provider.Settings.ActionManageOverlayPermission);
+        intent.SetData(Android.Net.Uri.Parse($"package:{AndroidApplication.Context.PackageName}"));
+        intent.AddFlags(ActivityFlags.NewTask);
+        AndroidApplication.Context.StartActivity(intent);
     }
 
     private static void RequestBackgroundPermission()

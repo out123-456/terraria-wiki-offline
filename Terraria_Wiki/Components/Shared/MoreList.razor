@@ -32,8 +32,8 @@
                     </div>
                 </div>
             }
-            @* 悬浮窗：只做 Windows（主窗口收缩后只留 wiki 视图 + 顶部小条） *@
-            @if (AppState.IsWindows)
+            @* 悬浮窗：Windows 收缩主窗口；Android 用前台服务 + WindowManager 盖在别人上面 *@
+            @if (AppState.IsWindows || AppState.IsAndroid)
             {
                 <div class="action-item">
                     <IconButton Size="@ActionsSize" Icon="floating-window" IconSize="24"
@@ -227,6 +227,18 @@
             isOpen = FloatingWindow.Open();
             barActive = false;
         }
+#elif ANDROID
+        if (AndroidOverlayController.IsRunning)
+        {
+            AndroidOverlayController.CloseAll();
+            isOpen = false;
+        }
+        else
+        {
+            AndroidOverlayController.ShowBall();
+            isOpen = AndroidOverlayController.IsRunning;
+        }
+        barActive = false;
 #else
         isOpen = false;
         barActive = false;

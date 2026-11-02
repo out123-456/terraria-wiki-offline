@@ -219,3 +219,5 @@ dotnet build Terraria_Wiki/Terraria_Wiki.csproj -f net11.0-windows10.0.19041.0 -
 ## 许可证
 
 本项目的原创客户端代码采用 [Apache-2.0](LICENSE) 许可证。Wiki 内容、游戏资产和第三方组件不由该许可证授权；请同时阅读 [CONTENT_ATTRIBUTION.md](CONTENT_ATTRIBUTION.md) 与 [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)。
+
+由"不卜庐七七"改动部分的授权见 [LICENSE-MODIFICATIONS.md](LICENSE-MODIFICATIONS.md)：改动的著作财产权无偿转让给原项目开发者，唯一条件为商业使用署名。

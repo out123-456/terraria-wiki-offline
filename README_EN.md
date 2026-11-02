@@ -218,3 +218,5 @@ If this project helps you, feel free to star it on GitHub.
 ## License
 
 The original client code of this project is licensed under [Apache-2.0](LICENSE). Wiki content, game assets and third-party components are not covered by that license; please also read [CONTENT_ATTRIBUTION.md](CONTENT_ATTRIBUTION.md) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+The modifications made by "不卜庐七七" follow [LICENSE-MODIFICATIONS.md](LICENSE-MODIFICATIONS.md): economic rights are assigned to the original developer free of charge; commercial use must credit the original developer.

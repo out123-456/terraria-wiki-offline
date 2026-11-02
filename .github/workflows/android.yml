@@ -148,7 +148,7 @@ jobs:
             -p:JavaSdkDirectory="$JAVA_HOME"
 
       # 第一次 publish:不拆包 → 一个支持 arm64 + x86_64 的总包.
-      - name: 编译总包
+      - name: 编译总包(双 ABI)
         run: |
           set -euo pipefail
           export PATH="$DOTNET_ROOT:$PATH"
@@ -156,18 +156,35 @@ jobs:
           args=(-p:RunAOTCompilation=false -p:AndroidEnableProfiledAot=false)
           if [ "${{ inputs.aot }}" = "true" ]; then args=(); fi
 
-          dotnet publish "$PROJECT" \
+          # ★ 总包必须用 build,publish 不行:
+          #   publish 会把构建收敛到单个 RuntimeIdentifier(默认推断成 android-arm64),
+          #   于是 AndroidCreatePackagePerAbi 也无从拆,产物只剩一个 ABI(2026-11 实测).
+          #   build 会遍历 csproj 的 RuntimeIdentifiers(.NET 9+ 默认 arm64 + x64),
+          #   把两个 ABI 打进同一个 apk.
+          dotnet build "$PROJECT" \
             -f "$TFM" -c Release \
             -p:AndroidPackageFormats=apk \
             -p:AndroidSdkDirectory="$SDK_DIR" \
             -p:JavaSdkDirectory="$JAVA_HOME" \
             -p:ContinuousIntegrationBuild=true \
-            -o dist/universal \
             "${args[@]}"
 
-      # 第二次 publish:同一组 RID,只是多打开"按 ABI 拆包".
-      # 编译产物与 obj 都复用,实际只重跑打包与签名,几分钟的事.
-      - name: 编译分包
+          apk=$(find Terraria_Wiki/bin/Release -name '*-Signed.apk' -print -quit)
+          if [ -z "$apk" ]; then
+            apk=$(find Terraria_Wiki/bin/Release -name '*.apk' -print -quit)
+          fi
+          if [ -z "$apk" ]; then
+            echo "总包没有产出 apk" >&2
+            find Terraria_Wiki/bin -name '*.apk' >&2 || true
+            exit 1
+          fi
+          mkdir -p dist/universal
+          cp "$apk" dist/universal/
+          echo "总包: $apk"
+          unzip -l "$apk" | grep -E 'lib/(arm64-v8a|x86_64)/' | head -4 || true
+
+      # 逐 RID 各 publish 一次:每个包只含一个 ABI,体积最小.
+      - name: 编译分包(逐 RID)
         run: |
           set -euo pipefail
           export PATH="$DOTNET_ROOT:$PATH"
@@ -175,18 +192,33 @@ jobs:
           args=(-p:RunAOTCompilation=false -p:AndroidEnableProfiledAot=false)
           if [ "${{ inputs.aot }}" = "true" ]; then args=(); fi
 
-          dotnet publish "$PROJECT" \
-            -f "$TFM" -c Release \
-            -p:AndroidCreatePackagePerAbi=true \
-            -p:AndroidPackageFormats=apk \
-            -p:AndroidSdkDirectory="$SDK_DIR" \
-            -p:JavaSdkDirectory="$JAVA_HOME" \
-            -p:ContinuousIntegrationBuild=true \
-            --no-restore \
-            -o dist/perabi \
-            "${args[@]}"
+          for rid in android-arm64 android-x64; do
+            out="dist/$rid"
+            rm -rf "$out"
+            dotnet publish "$PROJECT" \
+              -f "$TFM" -c Release \
+              -r "$rid" \
+              -p:AndroidPackageFormats=apk \
+              -p:AndroidSdkDirectory="$SDK_DIR" \
+              -p:JavaSdkDirectory="$JAVA_HOME" \
+              -p:ContinuousIntegrationBuild=true \
+              -o "$out" \
+              "${args[@]}"
 
-      # 收集与改名:三个来源目录里挑出各自的 apk,统一命名,再算 sha256.
+            apk=$(find "$out" -name '*-Signed.apk' -print -quit)
+            if [ -z "$apk" ]; then
+              apk=$(find "$out" -name '*.apk' -print -quit)
+            fi
+            if [ -z "$apk" ]; then
+              echo "$rid 没有产出 apk" >&2
+              find "$out" -name '*.apk' >&2 || true
+              exit 1
+            fi
+            echo "分包 $rid: $apk"
+            unzip -l "$apk" | grep -E 'lib/' | head -3 || true
+          done
+
+      # 收集与改名:三份 apk 统一命名,再算 sha256.
       - name: 收集产物
         id: collect
         run: |
@@ -194,23 +226,19 @@ jobs:
           mkdir -p artifact
           ver=$(grep -oPm1 '(?<=<ApplicationDisplayVersion>)[^<]+' Terraria_Wiki/Terraria_Wiki.csproj || echo 0.0.0)
 
-          # 总包:universal 目录里没有 ABI 后缀的那个
-          # ★ 这里一律用 if 而不是 "test && cmd":后者在条件为假时返回 1,
-          # set -e 会直接终止整个 step(签名/未签名的文件名差异就是靠这个回退的).
-          universal=$(find dist/universal -name '*-Signed.apk' ! -name '*-arm64-v8a-*' ! -name '*-x86_64-*' -print -quit)
-          if [ -z "$universal" ]; then
-            universal=$(find dist/universal -name '*.apk' ! -name '*-arm64-v8a-*' ! -name '*-x86_64-*' -print -quit)
-          fi
+          # ★ 一律用 if 而不是 "test && cmd":后者条件为假时返回 1,
+          #   set -e 会直接终止整个 step(签名/未签名的文件名差异靠这个回退).
+          pick() {
+            found=$(find "$1" -name '*-Signed.apk' -print -quit)
+            if [ -z "$found" ]; then
+              found=$(find "$1" -name '*.apk' -print -quit)
+            fi
+            printf '%s' "$found"
+          }
 
-          arm64=$(find dist/perabi -name '*-arm64-v8a-Signed.apk' -print -quit)
-          if [ -z "$arm64" ]; then
-            arm64=$(find dist/perabi -name '*-arm64-v8a.apk' -print -quit)
-          fi
-
-          x64=$(find dist/perabi -name '*-x86_64-Signed.apk' -print -quit)
-          if [ -z "$x64" ]; then
-            x64=$(find dist/perabi -name '*-x86_64.apk' -print -quit)
-          fi
+          universal=$(pick dist/universal)
+          arm64=$(pick dist/android-arm64)
+          x64=$(pick dist/android-x64)
 
           for pair in "arm64:$arm64" "x64:$x64" "universal:$universal"; do
             tag=${pair%%:*}
@@ -222,6 +250,16 @@ jobs:
             fi
             cp "$src" "artifact/terraria-wiki-${ver}-${tag}.apk"
           done
+
+          # 总包必须真的含两个 ABI,否则它只是个改名的分包.
+          if ! unzip -l "artifact/terraria-wiki-${ver}-universal.apk" | grep -q 'lib/arm64-v8a/'; then
+            echo "总包缺 arm64-v8a" >&2
+            exit 1
+          fi
+          if ! unzip -l "artifact/terraria-wiki-${ver}-universal.apk" | grep -q 'lib/x86_64/'; then
+            echo "总包缺 x86_64" >&2
+            exit 1
+          fi
 
           ls -lh artifact
           (cd artifact && sha256sum *.apk > SHA256SUMS.txt && cat SHA256SUMS.txt)

@@ -64,8 +64,10 @@ env:
   DOTNET_ROOT: ${{ github.workspace }}/.dotnet
   TFM: net11.0-android37.0
   PROJECT: Terraria_Wiki/Terraria_Wiki.csproj
-  # 两个 RID 用 %3B 转义:MSBuild 命令行里裸分号会被当成下一个属性的分隔符.
-  RIDS: android-arm64%3Bandroid-x64
+  # 两个 RID 用分号分隔.env 的值不经过 shell,分号原样传给 MSBuild 的列表属性.
+  # ★ 不要写成 %3B:GitHub Actions 的 env 不做 URL 解码,那样会被当成一个名为
+  #   "android-arm64%3Bandroid-x64" 的 RID,报 NETSDK1083(已在 2026-11 踩过).
+  RIDS: "android-arm64;android-x64"
 
 jobs:
   build:

@@ -14,6 +14,20 @@ public static class AndroidOverlayController
     /// <summary>当前是否在运行.由 Start/CloseAll 与 Service 的 OnDestroy 共同维护.</summary>
     public static bool IsRunning { get; private set; }
 
+    /// <summary>
+    /// 状态变化(开始/停止)。界面层订阅后刷新按钮，
+    /// 否则在悬浮球那边关掉窗口，主界面这里还显示"已开启"。
+    /// </summary>
+    public static event Action? RunningChanged;
+
+    private static void SetRunning(bool value)
+    {
+        if (IsRunning == value)
+            return;
+        IsRunning = value;
+        RunningChanged?.Invoke();
+    }
+
     /// <summary>显示悬浮球(已显示则什么都不做).</summary>
     public static void ShowBall() => Start("ball");
 
@@ -25,14 +39,14 @@ public static class AndroidOverlayController
     {
         var context = AndroidApplication.Context;
         context.StopService(new Intent(context, typeof(Terraria_Wiki.Platforms.Android.OverlayService)));
-        IsRunning = false;
+        SetRunning(false);
     }
 
     private static void Start(string action)
     {
         if (!AndroidPermissionService.IsGranted(AndroidPermissionType.FloatingWindow))
         {
-            IsRunning = false;
+            SetRunning(false);
             return;
         }
 
@@ -47,15 +61,15 @@ public static class AndroidOverlayController
             else
                 context.StartService(intent);
 
-            IsRunning = true;
+            SetRunning(true);
         }
         catch (System.Exception ex)
         {
             // 后台启动被系统拒绝、缺权限之类的情况,不能让界面层直接崩.
             Android.Util.Log.Warn("TerrariaWiki", "overlay start failed: " + ex);
-            IsRunning = false;
+            SetRunning(false);
         }
     }
 
-    internal static void NotifyStopped() => IsRunning = false;
+    internal static void NotifyStopped() => SetRunning(false);
 }

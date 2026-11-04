@@ -121,12 +121,31 @@
     protected override void OnInitialized()
     {
         AppState.PropertyChanged += OnAppStatePropertyChanged;
+#if ANDROID
+        // 悬浮球那边关掉窗口时，这里要跟着变回"未开启"
+        AndroidOverlayController.RunningChanged += OnOverlayRunningChanged;
+#endif
     }
 
     public void Dispose()
     {
         AppState.PropertyChanged -= OnAppStatePropertyChanged;
+#if ANDROID
+        AndroidOverlayController.RunningChanged -= OnOverlayRunningChanged;
+#endif
     }
+
+#if ANDROID
+    private void OnOverlayRunningChanged()
+    {
+        _ = InvokeAsync(() =>
+        {
+            isOpen = AndroidOverlayController.IsRunning;
+            AppState.FloatingSearchOpen = isOpen;
+            StateHasChanged();
+        });
+    }
+#endif
 
     private void OnAppStatePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {

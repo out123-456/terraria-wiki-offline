@@ -40,17 +40,20 @@ public class OverlayService : Service
     private const float FlipLineRatio = 0.025f;
 
     private const int BallSizeDp = 40;
-    private const int MinPanelWidthDp = 240;
-    private const int MinPanelHeightDp = 320;
-    private const int BarButtonWidthDp = 30;
+    /// <summary>面板最小尺寸就是球本身: 再小就没法拿捏了, 但不人为加 240x320 那种限制.</summary>
+    private const int MinPanelSizeDp = BallSizeDp;
     private const int CornerGripDp = 28;
     private const int EdgeGripDp = 14;
     private const int BallMarginDp = 24;
 
-    private const string PrefXRatio = "Overlay.XRatio";
-    private const string PrefYRatio = "Overlay.YRatio";
-    private const string PrefWRatio = "Overlay.WRatio";
-    private const string PrefHRatio = "Overlay.HRatio";
+    // ★ 球和面板的位置必须分开存: 共用一组键时, 收成球会把面板的几何覆盖掉,
+    //   下次重启就会拿球的位置去当窗口位置.
+    private const string PrefBallX = "Overlay.BallX";
+    private const string PrefBallY = "Overlay.BallY";
+    private const string PrefPanelX = "Overlay.PanelX";
+    private const string PrefPanelY = "Overlay.PanelY";
+    private const string PrefPanelW = "Overlay.PanelW";
+    private const string PrefPanelH = "Overlay.PanelH";
     private const string PrefBarBottom = "Overlay.BarAtBottom";
 
     private enum Mode { None, Ball, Panel }
@@ -62,8 +65,19 @@ public class OverlayService : Service
     private WindowManagerLayoutParams? _ballLp;
 
     private FrameLayout? _panel;
-    private LinearLayout? _column;
+    private FrameLayout? _column;
+    private FrameLayout.LayoutParams? _barLp;
+    private FrameLayout.LayoutParams? _contentLp;
+    private FrameLayout.LayoutParams? _edgeGripLp;
+    private FrameLayout.LayoutParams? _cornerGripLp;
     private LinearLayout? _bar;
+    /// <summary>宽度不够时按这个顺序依次消失(标题最先), ✕ 不在列表里 = 永不消失.</summary>
+    private readonly List<View> _overflowOrder = new();
+    /// <summary>最近一次手指按下的屏幕坐标: 收成球时球要落在这里, 不是窗口中心.</summary>
+    private int _lastTouchX;
+    private int _lastTouchY;
+    /// <summary>状态栏高度: 球的 y 至少要让它完全露在状态栏下方, 否则触摸会被状态栏吃掉.</summary>
+    private int _topInsetPx;
     private TextView? _titleView;
     private WindowManagerLayoutParams? _panelLp;
     private bool _barAtBottom;
@@ -103,10 +117,12 @@ public class OverlayService : Service
         _screenW = metrics.WidthPixels;
         _screenH = metrics.HeightPixels;
         _density = metrics.Density;
-        _barHeightPx = Math.Max(Dp(32), (int)(_screenH * BarHeightRatio));
+        // 工具栏与按钮都做成球那么大, 不再让 5% 屏高把顶栏撑得比按钮高.
+        _barHeightPx = Dp(BallSizeDp);
         _ballSizePx = Dp(BallSizeDp);
-        _minW = Dp(MinPanelWidthDp);
-        _minH = Dp(MinPanelHeightDp);
+        _minW = Dp(MinPanelSizeDp);
+        _minH = Dp(MinPanelSizeDp);
+        _topInsetPx = GetStatusBarHeight();
         _touchSlop = ViewConfiguration.Get(this)!.ScaledTouchSlop;
         _wm = GetSystemService(WindowService)!.JavaCast<IViewManager>();
         _appState = IPlatformApplication.Current?.Services.GetService<AppState>();
@@ -145,6 +161,13 @@ public class OverlayService : Service
     }
 
     private int Dp(float value) => (int)(value * Resources!.DisplayMetrics!.Density);
+
+    /// <summary>状态栏高度(px)。拿不到就按 24dp 估, 宁可多留一点也不要让球钻进状态栏。</summary>
+    private int GetStatusBarHeight()
+    {
+        var id = Resources!.GetIdentifier("status_bar_height", "dimen", "android");
+        return id > 0 ? Resources.GetDimensionPixelSize(id) : Dp(24);
+    }
 
     // ============================================================
     // 通知
@@ -193,9 +216,10 @@ public class OverlayService : Service
 
         RemovePanel();
 
-        var x = (int)(Preferences.Default.Get(PrefXRatio, -1.0) * _screenW);
-        var y = (int)(Preferences.Default.Get(PrefYRatio, -1.0) * _screenH);
-        if (Preferences.Default.Get(PrefXRatio, -1.0) < 0)
+        var storedX = Preferences.Default.Get(PrefBallX, -1.0);
+        var x = (int)(storedX * _screenW);
+        var y = (int)(Preferences.Default.Get(PrefBallY, -1.0) * _screenH);
+        if (storedX < 0)
         {
             x = _screenW - _ballSizePx - Dp(BallMarginDp);
             y = Dp(BallMarginDp);
@@ -222,8 +246,9 @@ public class OverlayService : Service
             _ballSizePx, _ballSizePx,
             WindowManagerFlags.NotFocusable | WindowManagerFlags.NotTouchModal | WindowManagerFlags.LayoutInScreen);
 
+        // y 至少压到状态栏下沿: 浮在状态栏底下时, 点击会被状态栏先吃掉, 球就再也拖不动了.
         lp.X = Clamp(x, 0, Math.Max(0, _screenW - _ballSizePx));
-        lp.Y = Clamp(y, 0, Math.Max(0, _screenH - _ballSizePx));
+        lp.Y = Clamp(y, _topInsetPx, Math.Max(_topInsetPx, _screenH - _ballSizePx));
 
         _wm!.AddView(ball, lp);
         _ballView = ball;
@@ -272,7 +297,7 @@ public class OverlayService : Service
                 if (_dragging)
                 {
                     _ballLp.X = Clamp(_startX + dx, 0, Math.Max(0, _screenW - _ballSizePx));
-                    _ballLp.Y = Clamp(_startY + dy, 0, Math.Max(0, _screenH - _ballSizePx));
+                    _ballLp.Y = Clamp(_startY + dy, _topInsetPx, Math.Max(_topInsetPx, _screenH - _ballSizePx));
                     _wm!.UpdateViewLayout(_ballView, _ballLp);
                 }
                 break;
@@ -303,8 +328,10 @@ public class OverlayService : Service
         if (_ballLp == null || _screenW <= 0 || _screenH <= 0)
             return;
 
-        Preferences.Default.Set(PrefXRatio, (double)_ballLp.X / _screenW);
-        Preferences.Default.Set(PrefYRatio, (double)_ballLp.Y / _screenH);
+        // 存之前再压一次: 万一屏幕旋转/状态栏高度变化把旧值顶进禁区, 下次读到的仍是有效位置.
+        var y = Math.Max(_ballLp.Y, _topInsetPx);
+        Preferences.Default.Set(PrefBallX, (double)_ballLp.X / _screenW);
+        Preferences.Default.Set(PrefBallY, (double)y / _screenH);
     }
 
     // ============================================================
@@ -313,10 +340,10 @@ public class OverlayService : Service
 
     private void ShowPanelAtStoredGeometry()
     {
-        var wRatio = Preferences.Default.Get(PrefWRatio, (double)PanelWidthRatio);
-        var hRatio = Preferences.Default.Get(PrefHRatio, (double)PanelHeightRatio);
-        var xRatio = Preferences.Default.Get(PrefXRatio, (double)PanelLeftRatio);
-        var yRatio = Preferences.Default.Get(PrefYRatio, (double)PanelTopRatio);
+        var wRatio = Preferences.Default.Get(PrefPanelW, (double)PanelWidthRatio);
+        var hRatio = Preferences.Default.Get(PrefPanelH, (double)PanelHeightRatio);
+        var xRatio = Preferences.Default.Get(PrefPanelX, (double)PanelLeftRatio);
+        var yRatio = Preferences.Default.Get(PrefPanelY, (double)PanelTopRatio);
 
         var w = Clamp((int)(wRatio * _screenW), _minW, _screenW);
         var h = Clamp((int)(hRatio * _screenH), _minH, _screenH);
@@ -334,9 +361,9 @@ public class OverlayService : Service
         var centerX = _ballLp == null ? _screenW / 2 : _ballLp.X + _ballSizePx / 2;
         var centerY = _ballLp == null ? _screenH / 2 : _ballLp.Y + _ballSizePx / 2;
 
-        var w = Clamp((int)(Preferences.Default.Get(PrefWRatio, (double)PanelWidthRatio) * _screenW),
+        var w = Clamp((int)(Preferences.Default.Get(PrefPanelW, (double)PanelWidthRatio) * _screenW),
             _minW, _screenW);
-        var h = Clamp((int)(Preferences.Default.Get(PrefHRatio, (double)PanelHeightRatio) * _screenH),
+        var h = Clamp((int)(Preferences.Default.Get(PrefPanelH, (double)PanelHeightRatio) * _screenH),
             _minH, _screenH);
 
         var (x, y) = AnchorToBall(centerX, centerY, w, h);
@@ -355,20 +382,33 @@ public class OverlayService : Service
 
     private void ShowPanelCore(int x, int y, int w, int h)
     {
-        var column = new LinearLayout(this) { Orientation = Orientation.Vertical };
+        // ★ 用 FrameLayout 而不是 LinearLayout：工具栏换到顶部/底部只改 LayoutParams.Gravity，
+        //   不把 bar 从父容器里摘出来。移除正在接收触摸的 View 会让系统发 CANCEL，
+        //   拖动到屏幕顶部那一刻手就被"掐断"，这就是之前翻转打断拖动的原因。
+        var column = new FrameLayout(this);
         var bar = BuildBar();
         var content = BuildContent();
 
-        column.AddView(bar, new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MatchParent, _barHeightPx));
-        column.AddView(content, new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MatchParent, 0, 1f));
+        var barLp = new FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MatchParent, _barHeightPx)
+        {
+            Gravity = GravityFlags.Top
+        };
+        var contentLp = new FrameLayout.LayoutParams(
+            ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.MatchParent)
+        {
+            TopMargin = _barHeightPx
+        };
+
+        // 先加内容再加工具栏：工具栏在内容之上，圆角/内边距才不会被盖住
+        column.AddView(content, contentLp);
+        column.AddView(bar, barLp);
 
         var panel = new FrameLayout(this);
         panel.AddView(column, new FrameLayout.LayoutParams(
             ViewGroup.LayoutParams.MatchParent, ViewGroup.LayoutParams.MatchParent));
 
-        // 下边缘 / 右下角 两个缩放手柄
+        // 缩放手柄：始终在工具栏的反面（工具栏在上 → 手柄在下；工具栏在下 → 手柄在上）
         var edge = new View(this);
         var corner = new View(this);
         var edgeParams = new FrameLayout.LayoutParams(
@@ -396,6 +436,10 @@ public class OverlayService : Service
         _panel = panel;
         _column = column;
         _bar = bar;
+        _barLp = barLp;
+        _contentLp = contentLp;
+        _edgeGripLp = edgeParams;
+        _cornerGripLp = cornerParams;
         _panelLp = lp;
         _panelW = w;
         _panelH = h;
@@ -406,8 +450,9 @@ public class OverlayService : Service
         corner.Touch += OnCornerGripTouch;
 
         var wantBarBottom = y < (int)(_screenH * FlipLineRatio);
-        _barAtBottom = !wantBarBottom;          // 取反,让 SetBarAtBottom 一定执行
+        _barAtBottom = !wantBarBottom;          // 取反，让 SetBarAtBottom 一定执行
         SetBarAtBottom(wantBarBottom);
+        UpdateBarOverflow(w);
         SavePanelGeometry();
     }
 
@@ -423,10 +468,19 @@ public class OverlayService : Service
         bar.SetGravity(GravityFlags.CenterVertical);
         bar.SetPadding(Dp(4), 0, Dp(4), 0);
 
-        bar.AddView(BarButton("‹", () => GoBack()));
-        bar.AddView(BarButton("⌂", () => GoHome()));
-        bar.AddView(BarButton("−", () => ChangeZoom(-10)));
-        bar.AddView(BarButton("+", () => ChangeZoom(10)));
+        _overflowOrder.Clear();
+        var themeColor = App.AppStateManager?.IsDarkTheme == true
+            ? Color.Argb(255, 230, 230, 230)
+            : Color.Argb(255, 40, 40, 40);
+
+        var back = BarButton(global::Terraria_Wiki.Resource.Drawable.ic_overlay_back, themeColor, () => GoBack());
+        var home = BarButton(global::Terraria_Wiki.Resource.Drawable.ic_overlay_home, themeColor, () => GoHome());
+        var zoomOut = BarButton(global::Terraria_Wiki.Resource.Drawable.ic_overlay_zoom_out, themeColor, () => ChangeZoom(-10));
+        var zoomIn = BarButton(global::Terraria_Wiki.Resource.Drawable.ic_overlay_zoom_in, themeColor, () => ChangeZoom(10));
+        bar.AddView(back);
+        bar.AddView(home);
+        bar.AddView(zoomOut);
+        bar.AddView(zoomIn);
 
         var title = new TextView(this)
         {
@@ -435,40 +489,87 @@ public class OverlayService : Service
         };
         title.SetMaxLines(1);
         title.SetTextSize(global::Android.Util.ComplexUnitType.Sp, 12);
-        title.SetTextColor(App.AppStateManager?.IsDarkTheme == true
-            ? Color.Argb(255, 230, 230, 230)
-            : Color.Argb(255, 40, 40, 40));
+        title.SetTextColor(themeColor);
         title.Text = CurrentPageTitle();
         bar.AddView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WrapContent, 1f));
         _titleView = title;
 
-        bar.AddView(BarButton("⤢", () => ReturnToApp()));
-        bar.AddView(BarButton("—", () => CollapseToBall()));
-        bar.AddView(BarButton("✕", () => ExitOverlay(), danger: true));
+        var wiki = BarButton(global::Terraria_Wiki.Resource.Drawable.ic_overlay_wiki, themeColor, SwitchWiki);
+        var search = BarButton(global::Terraria_Wiki.Resource.Drawable.ic_overlay_search, themeColor, SearchInOverlay);
+        var collapse = BarButton(global::Terraria_Wiki.Resource.Drawable.ic_overlay_collapse, themeColor, CollapseToBall);
+        var close = BarButton(global::Terraria_Wiki.Resource.Drawable.ic_overlay_close, Color.Argb(255, 220, 80, 80), ExitOverlay);
+        bar.AddView(wiki);
+        bar.AddView(search);
+        bar.AddView(collapse);
+        bar.AddView(close);
+
+        // 消失顺序＝添加顺序：+ → − → ⌂ → ‹ → wiki → 搜索 → 收起；✕ 不进来，永存。
+        _overflowOrder.Add(zoomIn);
+        _overflowOrder.Add(zoomOut);
+        _overflowOrder.Add(home);
+        _overflowOrder.Add(back);
+        _overflowOrder.Add(wiki);
+        _overflowOrder.Add(search);
+        _overflowOrder.Add(collapse);
 
         return bar;
     }
 
-    private TextView BarButton(string label, Action onClick, bool danger = false)
+    /// <summary>工具栏按钮：真图标（VectorDrawable），不是字符。尺寸与球一致。</summary>
+    private ImageView BarButton(int iconRes, Color tint, Action onClick)
     {
-        var button = new TextView(this)
+        var button = new ImageView(this)
         {
-            Text = label,
-            Gravity = GravityFlags.Center,
             Clickable = true,
             Focusable = false
         };
-        button.SetTextSize(global::Android.Util.ComplexUnitType.Sp, 15);
-        button.SetTextColor(danger
-            ? Color.Argb(255, 220, 80, 80)
-            : (App.AppStateManager?.IsDarkTheme == true
-                ? Color.Argb(255, 230, 230, 230)
-                : Color.Argb(255, 40, 40, 40)));
-
+        button.SetImageResource(iconRes);
+        button.SetScaleType(ImageView.ScaleType.CenterInside);
+        button.SetColorFilter(tint);
         button.Click += (_, _) => onClick();
-        var lp = new LinearLayout.LayoutParams(Dp(BarButtonWidthDp), ViewGroup.LayoutParams.MatchParent);
+
+        var lp = new LinearLayout.LayoutParams(Dp(BallSizeDp), ViewGroup.LayoutParams.MatchParent);
         button.LayoutParameters = lp;
+        // 图标本身画 20dp，剩下的留给触摸热区
+        button.SetPadding(Dp(10), Dp(10), Dp(10), Dp(10));
         return button;
+    }
+
+    /// <summary>
+    /// 宽度不够时按优先级收起控件：标题 → 左侧(+ − ⌂ ‹) → 右侧(wiki 搜索 收起)，✕ 永不消失。
+    /// 每次先全部恢复再收，缩回去放大时能自己长回来。
+    /// </summary>
+    private void UpdateBarOverflow(int widthPx)
+    {
+        if (_bar == null)
+            return;
+
+        var avail = Math.Max(0, widthPx - Dp(8));
+        var unit = Dp(BallSizeDp);
+
+        foreach (var v in _overflowOrder)
+            v.Visibility = ViewStates.Visible;
+        if (_titleView != null)
+            _titleView.Visibility = ViewStates.Visible;
+
+        var used = unit;                                   // ✕ 永远占一格
+        foreach (var v in _overflowOrder)
+            if (v.Visibility == ViewStates.Visible)
+                used += unit;
+
+        // 标题最先让路
+        if (_titleView != null && used + unit > avail)
+            _titleView.Visibility = ViewStates.Gone;
+
+        foreach (var v in _overflowOrder)
+        {
+            if (used <= avail)
+                break;
+            if (v.Visibility != ViewStates.Visible)
+                continue;
+            v.Visibility = ViewStates.Gone;
+            used -= unit;
+        }
     }
 
     private View BuildContent()
@@ -521,6 +622,10 @@ public class OverlayService : Service
         _panel = null;
         _column = null;
         _bar = null;
+        _barLp = null;
+        _contentLp = null;
+        _edgeGripLp = null;
+        _cornerGripLp = null;
         _titleView = null;
         _panelLp = null;
         if (_mode == Mode.Panel)
@@ -533,8 +638,20 @@ public class OverlayService : Service
             return;
 
         SavePanelGeometry();
-        var centerX = _panelLp.X + _panelLp.Width / 2;
-        var centerY = _panelLp.Y + _panelLp.Height / 2;
+
+        // 球落在手指最后按下的位置，而不是窗口中心：收起这个动作发生在工具栏上，
+        // 手指就在那里，球出现在手下才跟手。
+        int centerX, centerY;
+        if (_lastTouchX != 0 || _lastTouchY != 0)
+        {
+            centerX = _lastTouchX;
+            centerY = _lastTouchY;
+        }
+        else
+        {
+            centerX = _panelLp.X + _panelLp.Width / 2;
+            centerY = _panelLp.Y + _panelLp.Height / 2;
+        }
 
         RemovePanel();
         ShowBallCore(centerX - _ballSizePx / 2, centerY - _ballSizePx / 2);
@@ -576,6 +693,19 @@ public class OverlayService : Service
         _ = AppService.WikiBackHomeAsync();
     }
 
+    /// <summary>切换 wiki：先回主界面打开数据管理；窗口内选书要等后台服务化(任务 D)。</summary>
+    private void SwitchWiki()
+    {
+        OpenApp();
+        AppService.NavigateTo("data");
+    }
+
+    /// <summary>搜索：原地搜索同样要等后台服务化(任务 D)，现在先回主界面，不做假交互。</summary>
+    private void SearchInOverlay()
+    {
+        ReturnToApp();
+    }
+
     private void ChangeZoom(int delta)
     {
         if (_appState == null)
@@ -604,6 +734,8 @@ public class OverlayService : Service
                 _downRawY = motion.RawY;
                 _startX = _panelLp?.X ?? 0;
                 _startY = _panelLp?.Y ?? 0;
+                _lastTouchX = (int)motion.RawX;
+                _lastTouchY = (int)motion.RawY;
                 _dragging = false;
                 _followingPointer = false;
                 break;
@@ -758,6 +890,7 @@ public class OverlayService : Service
                 _panelLp.Width = Clamp(_startW + dw, _minW, _screenW * 2);
                 _panelLp.Height = Clamp(_startH + dh, _minH, _screenH * 2);
                 _wm!.UpdateViewLayout(_panel, _panelLp);
+                UpdateBarOverflow(_panelLp.Width);
                 break;
 
             case MotionEventActions.Up:
@@ -772,16 +905,37 @@ public class OverlayService : Service
 
     private void SetBarAtBottom(bool bottom)
     {
-        if (_column == null || _bar == null || bottom == _barAtBottom)
+        if (_bar == null || _barLp == null || _column == null)
             return;
 
+        // 首次调用(ShowPanelCore 末尾)也走这里，把布局参数一次性摆正
         _barAtBottom = bottom;
-        _column.RemoveView(_bar);
 
-        if (!bottom)
-            _column.AddView(_bar, 0);
-        else
-            _column.AddView(_bar);
+        _barLp.Gravity = bottom ? GravityFlags.Bottom : GravityFlags.Top;
+        _column.UpdateViewLayout(_bar, _barLp);
+
+        if (_contentLp != null && _column.ChildCount > 0)
+        {
+            _contentLp.TopMargin = bottom ? 0 : _barHeightPx;
+            _contentLp.BottomMargin = bottom ? _barHeightPx : 0;
+            _column.UpdateViewLayout(_column.GetChildAt(0), _contentLp);
+        }
+
+        // 手柄换到工具栏的反面：工具栏在上手柄在下，反之亦然
+        if (_panel != null)
+        {
+            var gripGravity = bottom ? GravityFlags.Top : GravityFlags.Bottom;
+            if (_edgeGripLp != null && _panel.ChildCount > 1)
+            {
+                _edgeGripLp.Gravity = gripGravity;
+                _panel.UpdateViewLayout(_panel.GetChildAt(1), _edgeGripLp);
+            }
+            if (_cornerGripLp != null && _panel.ChildCount > 2)
+            {
+                _cornerGripLp.Gravity = gripGravity | GravityFlags.End;
+                _panel.UpdateViewLayout(_panel.GetChildAt(2), _cornerGripLp);
+            }
+        }
 
         Preferences.Default.Set(PrefBarBottom, bottom);
     }
@@ -830,10 +984,10 @@ public class OverlayService : Service
         if (_panelLp == null || _screenW <= 0 || _screenH <= 0)
             return;
 
-        Preferences.Default.Set(PrefXRatio, (double)_panelLp.X / _screenW);
-        Preferences.Default.Set(PrefYRatio, (double)_panelLp.Y / _screenH);
-        Preferences.Default.Set(PrefWRatio, (double)_panelLp.Width / _screenW);
-        Preferences.Default.Set(PrefHRatio, (double)_panelLp.Height / _screenH);
+        Preferences.Default.Set(PrefPanelX, (double)_panelLp.X / _screenW);
+        Preferences.Default.Set(PrefPanelY, (double)_panelLp.Y / _screenH);
+        Preferences.Default.Set(PrefPanelW, (double)_panelLp.Width / _screenW);
+        Preferences.Default.Set(PrefPanelH, (double)_panelLp.Height / _screenH);
     }
 
     private void DispatchBarClick(MotionEvent motion)

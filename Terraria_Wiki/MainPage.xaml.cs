@@ -1124,11 +1124,19 @@ namespace Terraria_Wiki
                 var density = DeviceDisplay.Current.MainDisplayInfo.Density;
                 if (density <= 0) density = 1; // 防止除以0
 
-                double topDp = Math.Max(statusInsets.Top, cutoutInsets.Top) / density;
+                // ★ 「忽略刘海」不只是给悬浮球用的：本体同样要能画进挖孔区。
+                //   打开时把 cutout 方向的避让直接归零（状态栏已经在沉浸模式里藏掉了），
+                //   关掉时仍然老实避让，两种行为可以在设置里切。
+                var ignoreCutout = Microsoft.Maui.Storage.Preferences.Default.Get("Overlay.IgnoreCutout", true);
+                double topDp = ignoreCutout
+                    ? 0
+                    : Math.Max(statusInsets.Top, cutoutInsets.Top) / density;
                 double bottomDp = navInsets.Bottom / density;
                 // 横屏时的刘海会变成 Left 或 Right
-                double leftDp = cutoutInsets.Left / density;
-                double rightDp = Math.Max(navInsets.Right, cutoutInsets.Right) / density;
+                double leftDp = ignoreCutout ? 0 : cutoutInsets.Left / density;
+                double rightDp = ignoreCutout
+                    ? navInsets.Right / density
+                    : Math.Max(navInsets.Right, cutoutInsets.Right) / density;
 
                 // 3. 注入给前端 CSS 变量
                 System.Diagnostics.Debug.WriteLine($"安全区 - 上: {topDp}dp, 下: {bottomDp}dp");

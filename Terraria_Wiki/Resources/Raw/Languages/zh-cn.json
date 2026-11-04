@@ -343,6 +343,8 @@
     "About.Title": "关于",
     "About.Intro": "一个离线的 Terraria Wiki 阅读器.本页汇集版本、作者、改动声明与开源许可入口.",
     "Licenses.Modifications": "本分支改动声明",
-    "About.Maintainer": "本分支维护者"
+    "About.Maintainer": "本分支维护者",
+    "AppTask.PermissionsPartialWarning": "还有权限没有授予：没有通知权限就看不到下载进度；没有后台权限，切到别的应用后下载可能被系统暂停。可以继续，也可以现在去系统设置里打开。",
+    "AppTask.ContinueAnyway": "仍然继续"
   }
 }

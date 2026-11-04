@@ -249,16 +249,33 @@ public sealed class AppTaskRunner
             if (page is null)
                 return false;
 
-            var openSettings = await page.DisplayAlertAsync(
-                _loc.Get("AppTask.PermissionsRequiredTitle"),
-                _loc.Get("AppTask.PermissionsRequired"),
-                _loc.Get("AppTask.OpenSettings"),
-                _loc.Get("AppTask.Ignore"));
-
-            if (openSettings)
+            // 和设置页同一套请求逻辑：缺哪项补哪项（通知弹系统框、后台跳电池优化、联网跳应用详情）。
+            // 一次把三项都过一遍，不让用户为了开个下载去设置里点三次。
+            foreach (var permission in new[]
+                     {
+                         AndroidPermissionType.Notifications,
+                         AndroidPermissionType.Background,
+                         AndroidPermissionType.Network
+                     })
             {
-                AndroidPermissionService.OpenAppSettings();
-                return false;
+                if (!AndroidPermissionService.IsGranted(permission))
+                    await AndroidPermissionService.RequestAsync(permission);
+            }
+
+            // 仍然缺：不硬拦，把影响讲清楚，让用户自己决定继续还是去设置
+            if (!AndroidPermissionService.AreDownloadPermissionsGranted())
+            {
+                var proceed = await page.DisplayAlertAsync(
+                    _loc.Get("AppTask.PermissionsRequiredTitle"),
+                    _loc.Get("AppTask.PermissionsPartialWarning"),
+                    _loc.Get("AppTask.ContinueAnyway"),
+                    _loc.Get("AppTask.OpenSettings"));
+
+                if (!proceed)
+                {
+                    AndroidPermissionService.OpenAppSettings();
+                    return false;
+                }
             }
         }
 #endif

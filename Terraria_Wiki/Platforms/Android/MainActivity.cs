@@ -57,13 +57,33 @@ namespace Terraria_Wiki
                 Window.SetNavigationBarColor(Android.Graphics.Color.Transparent);
             }
             ChangeStatusBarColor();
+            ApplyImmersiveMode();
+        }
 
+        /// <summary>
+        /// 应用内沉浸：隐藏状态栏，下拉/上滑可临时唤出。
+        /// 普通应用没有系统权限在"别的应用/桌面"上隐藏系统栏，所以只作用于本应用窗口——
+        /// 悬浮窗显示时应用外仍然是带状态栏的桌面，这一点在需求确认时就说明过。
+        /// </summary>
+        private void ApplyImmersiveMode()
+        {
+            if (Build.VERSION.SdkInt < BuildVersionCodes.R)
+                return;
 
+            var controller = WindowCompat.GetInsetsController(Window, Window.DecorView);
+            if (controller == null)
+                return;
+
+            controller.Hide(WindowInsetsCompat.Type.StatusBars());
+            // 用户从边缘上滑时临时露出，随后自动收回，不打断操作
+            controller.SystemBarsBehavior = WindowInsetsControllerCompat.BehaviorShowTransientBarsBySwipe;
         }
 
         protected override void OnResume()
         {
             base.OnResume();
+            // 从别的应用回来 / 系统临时露出状态栏后，重新进入沉浸
+            ApplyImmersiveMode();
             AndroidPermissionService.NotifyResumed();
         }
 

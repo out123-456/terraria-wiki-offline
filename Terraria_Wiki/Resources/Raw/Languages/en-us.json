@@ -343,6 +343,8 @@
     "About.Title": "About",
     "About.Intro": "An offline Terraria Wiki reader. Version, author, modification notice and open-source licenses live here.",
     "Licenses.Modifications": "Fork Modifications Notice",
-    "About.Maintainer": "Fork Maintainer"
+    "About.Maintainer": "Fork Maintainer",
+    "AppTask.PermissionsPartialWarning": "Some permissions are still missing: without notifications you will not see download progress; without background permission the system may pause downloads when you switch apps. You can continue now or grant them in system settings.",
+    "AppTask.ContinueAnyway": "Continue anyway"
   }
 }

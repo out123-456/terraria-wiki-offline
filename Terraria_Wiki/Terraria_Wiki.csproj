@@ -184,6 +184,7 @@
 		       在包里形成两份逐字节相同的 LICENSE/NOTICE（实测重复 4 个文件 21.9 KB），所以这里排掉 Windows。 -->
 		<MauiAsset Include="..\LICENSE" LogicalName="licenses\LICENSE" Condition="!$(TargetFramework.Contains('-windows'))" />
 		<MauiAsset Include="..\NOTICE" LogicalName="licenses\NOTICE" Condition="!$(TargetFramework.Contains('-windows'))" />
+		<MauiAsset Include="..\LICENSE-MODIFICATIONS.md" LogicalName="licenses\LICENSE-MODIFICATIONS.md" Condition="!$(TargetFramework.Contains('-windows'))" />
 		<MauiAsset Include="..\THIRD_PARTY_NOTICES.md" LogicalName="licenses\THIRD_PARTY_NOTICES.md" Condition="!$(TargetFramework.Contains('-windows'))" />
 		<MauiAsset Include="..\CONTENT_ATTRIBUTION.md" LogicalName="licenses\CONTENT_ATTRIBUTION.md" Condition="!$(TargetFramework.Contains('-windows'))" />
 		<MauiAsset Include="..\licenses\OFL-1.1.txt" LogicalName="licenses\OFL-1.1.txt" Condition="!$(TargetFramework.Contains('-windows'))" />
@@ -193,6 +194,7 @@
 		<!-- Windows：exe 旁边放 4 份主声明，licenses\ 放 3 份第三方文本（与仓库结构一致，和上面的 MauiAsset 互补，不重复） -->
 		<Content Include="..\LICENSE" Link="LICENSE" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Condition="$(TargetFramework.Contains('-windows'))" />
 		<Content Include="..\NOTICE" Link="NOTICE" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Condition="$(TargetFramework.Contains('-windows'))" />
+		<Content Include="..\LICENSE-MODIFICATIONS.md" Link="LICENSE-MODIFICATIONS.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Condition="$(TargetFramework.Contains('-windows'))" />
 		<Content Include="..\THIRD_PARTY_NOTICES.md" Link="THIRD_PARTY_NOTICES.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Condition="$(TargetFramework.Contains('-windows'))" />
 		<Content Include="..\CONTENT_ATTRIBUTION.md" Link="CONTENT_ATTRIBUTION.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Condition="$(TargetFramework.Contains('-windows'))" />
 		<Content Include="..\licenses\OFL-1.1.txt" Link="licenses\OFL-1.1.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" Condition="$(TargetFramework.Contains('-windows'))" />

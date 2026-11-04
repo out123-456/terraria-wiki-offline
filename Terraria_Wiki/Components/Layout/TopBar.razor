@@ -6,14 +6,12 @@
 <header class="top-bar">
 
     <div class="actions-wrapper">
-        @* Logo 菜单键：内容是 <img> 而不是 <Icon>，所以走 IconButton 的 ChildContent。
-           Feedback=None 对应它原来"悬停/按下都不出现底色"的特例（以前靠 !important 硬压）。 *@
-        <IconButton Size="IconButtonSize.Square36" Feedback="ButtonFeedback.None"
+        @* 侧边栏入口：原来这里放的是 LOGO，现在换成 all-pages 图标；
+           LOGO 移到了标题右侧（搜索之后、更多之前）当"关于页"的入口。 *@
+        <IconButton Size="IconButtonSize.Square36" Icon="all-pages" IconSize="20"
                     Class="action-btn narrow-menu-btn"
                     Title="@App.Localization!.Get("TopBar.Menu")"
-                    OnClick="OpenMobileSidebar">
-            <img src="images/logo.svg" alt="" style="width: 36px; height: 36px;" />
-        </IconButton>
+                    OnClick="OpenMobileSidebar" />
         @if (ShouldShowActionButtons())
         {
             <IconButton Size="IconButtonSize.Square36" Icon="arrow-left" IconSize="20" Class="action-btn"
@@ -27,7 +25,7 @@
                         Title="@App.Localization!.Get("Common.Favorites")" OnClick="ToggleFavoriteAsync" />
         }
     </div>
-    <div class="topbar-title @(ShouldShowActionButtons() ? "" : "topbar-title-without-actions")" @onclick="WikiToTopAsync">@GetPageTitle()</div>
+    <div class="topbar-title @(ShouldShowActionButtons() ? "" : "topbar-title-without-actions")" @onclick="OnTitleClick">@GetPageTitle()</div>
 
 
     @if (ShouldShowSearch())
@@ -41,6 +39,16 @@
             }
         </div>
     }
+
+
+    @* 关于页入口：原来的 LOGO 按钮挪到这里——标题右侧、工具栏按钮（更多）左侧。
+       图标仍是项目 LOGO，位置换了，点击进 /about。 *@
+    <IconButton Size="IconButtonSize.Square36" Feedback="ButtonFeedback.None"
+                Class="action-btn"
+                Title="@App.Localization!.Get("TopBar.About")"
+                OnClick="GoAbout">
+        <img src="images/logo.svg" alt="" style="width: 36px; height: 36px;" />
+    </IconButton>
 
     @* 更多按钮：只在主页显示（顶部条不显示时它里面才有标签列表，见 AppState.TopStripVisible） *@
     @if (AppState.CurrentPage == "home")
@@ -137,6 +145,24 @@
         AppState.SidebarIsExpanded = true;
     }
 
+    /// <summary>顶栏标题：非主页时当侧边栏入口（与左上角按钮同行为），主页时保留"回到顶部"。</summary>
+    private void OnTitleClick()
+    {
+        if (AppState.CurrentPage != "home")
+        {
+            OpenMobileSidebar();
+            return;
+        }
+
+        WikiToTopAsync();
+    }
+
+    /// <summary>关于页：顶栏 LOGO 按钮的落点（/about）。</summary>
+    private void GoAbout()
+    {
+        AppService.NavigateTo("about");
+    }
+
     private void ToggleMobileTabPanel()
     {
         AppState.MoreListOpen = !AppState.MoreListOpen;
@@ -153,6 +179,7 @@
             "all-pages" => App.Localization!.Get("Common.Pages"),
             var p when p == "data" || p.StartsWith("data/") => App.Localization!.Get("Common.Data"),
             "settings" => App.Localization!.Get("Common.Settings"),
+            "about" => App.Localization!.Get("About.Title"),
             // 设置的子页面（settings/licenses，即"开源许可"）：顶栏标题仍归到"设置"，
             // 具体名字由页面自己的大标题显示——与 data/… 详情页同一套做法。
             var p when p.StartsWith("settings/") => App.Localization!.Get("Common.Settings"),

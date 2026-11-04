@@ -16,6 +16,7 @@ public static class LicenseCatalog
     [
         new("Licenses.AppLicense", "LICENSE"),
         new("Licenses.AppNotice", "NOTICE"),
+        new("Licenses.Modifications", "LICENSE-MODIFICATIONS.md"),
         new("Licenses.ThirdParty", "THIRD_PARTY_NOTICES.md"),
         new("Licenses.ContentAttribution", "CONTENT_ATTRIBUTION.md"),
         new("Licenses.FontLicense", "OFL-1.1.txt"),

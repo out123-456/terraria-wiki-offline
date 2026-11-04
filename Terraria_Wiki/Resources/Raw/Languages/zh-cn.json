@@ -338,6 +338,11 @@
     "Web.ClickToStop": "点击停止",
     "Web.Copy": "复制",
     "Web.OpenInNewTab": "在新标签页打开",
-    "Web.OpenOriginal": "打开原文"
+    "Web.OpenOriginal": "打开原文",
+    "TopBar.About": "关于",
+    "About.Title": "关于",
+    "About.Intro": "一个离线的 Terraria Wiki 阅读器.本页汇集版本、作者、改动声明与开源许可入口.",
+    "Licenses.Modifications": "本分支改动声明",
+    "About.Maintainer": "本分支维护者"
   }
 }

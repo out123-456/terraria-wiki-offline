@@ -289,41 +289,6 @@
                 @* 导出与清空都在「查看日志」列表页顶部：那里看得到具体是哪几份日志，
                    顺手就能处理，不必再回设置里找。 *@
             </div>
-            <div class="category-card">
-                <span class="category-title">@Loc.Get("Settings.About")</span>
-
-                <div class="setting-item">
-                    <div class="setting-info">
-                        <span class="setting-name">@Loc.Get("Common.Version")</span>
-                        <span class="setting-desc">
-                            v@(AppVersion)
-                            @if (AppState.IsWindows)
-                            {
-                                <text> (Build @BuildNumber)</text>
-                            }
-                        </span>
-                    </div>
-                    <ActionButton OnClick="CheckUpdateCommand">
-                        @(AppState.ActiveTasks.Any(x => x.Task.TaskType == AppTaskType.CheckUpdate) ? AppState.Tasks[AppTaskType.CheckUpdate].GetProcessingText(Loc) : Loc.Get("Settings.CheckUpdate"))
-                    </ActionButton>
-                </div>
-                <div class="setting-item">
-                    <div class="setting-info">
-                        <span class="setting-name">@Loc.Get("Settings.Author")</span>
-                        <span class="setting-desc">@Author</span>
-                    </div>
-                    <ActionButton Icon="github" IconSize="22" OnClick="GotoGithub" />
-                </div>
-                <div class="setting-item">
-                    <div class="setting-info">
-                        <span class="setting-name">@Loc.Get("Settings.OpenSourceLicenses")</span>
-                        <span class="setting-desc">@Loc.Get("Settings.OpenSourceLicensesDesc")</span>
-                    </div>
-                    <ActionButton OnClick="OpenLicenses">
-                        @Loc.Get("Common.View")
-                    </ActionButton>
-                </div>
-            </div>
 
         </div>
     </div>

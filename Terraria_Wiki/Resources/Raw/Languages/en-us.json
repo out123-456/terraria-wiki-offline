@@ -338,6 +338,11 @@
     "Web.ClickToStop": "Click to stop",
     "Web.Copy": "Copy",
     "Web.OpenInNewTab": "Open in new tab",
-    "Web.OpenOriginal": "Open Original"
+    "Web.OpenOriginal": "Open Original",
+    "TopBar.About": "About",
+    "About.Title": "About",
+    "About.Intro": "An offline Terraria Wiki reader. Version, author, modification notice and open-source licenses live here.",
+    "Licenses.Modifications": "Fork Modifications Notice",
+    "About.Maintainer": "Fork Maintainer"
   }
 }

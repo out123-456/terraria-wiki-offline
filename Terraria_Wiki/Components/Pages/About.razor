@@ -1,0 +1,162 @@
+@page "/about"
+@implements IDisposable
+@inject AppTaskRunner TaskRunner
+@using Terraria_Wiki.Services
+
+@* 关于页：顶栏那个 LOGO 按钮点进来的地方。
+   内容来自原来「设置 → 关于」那张卡片（版本 / 检查更新 / 作者 / 开源许可），
+   设置页不再重复放一份，避免两处文案各改各的。
+
+   ★ 给上游开发者（BigBearKing）留的话：
+     本页所有文案都在语言包的 About.* 与 Settings.* 里，改文字不用碰代码。
+     「项目简介」那张卡片是专门留给你自己填的——可以写项目定位、给新用户的一句话引导，
+     也可以只写一句「详见仓库 README」再把这整块删掉；删掉后布局会自然收起，不会留空洞。
+     另外一条排版建议：把 LOGO 从顶栏开头挪到工具栏末尾，通常更顺手、观感也更整齐，
+     这一步只影响布局，不改任何逻辑，做与不做都不影响功能。 *@
+
+<div class="page-anim page-content">
+
+    @* 一级页面（CurrentPage 没有 '/'），PageHeader 不会自动给返回箭头，这里显式打开；
+       默认行为是回 home，与 Android 硬件返回键一致。 *@
+    <PageHeader Title="@Loc.Get("About.Title")" ShowBack="true" />
+
+    <div class="category-card">
+        <span class="category-title">@Loc.Get("Common.Version")</span>
+
+        <div class="setting-item">
+            <div class="setting-info">
+                <span class="setting-name">@Loc.Get("Common.Version")</span>
+                <span class="setting-desc">
+                    v@(AppVersion)
+                    @if (AppState.IsWindows)
+                    {
+                        <text> (Build @BuildNumber)</text>
+                    }
+                </span>
+            </div>
+            <ActionButton OnClick="CheckUpdateCommand">
+                @(AppState.ActiveTasks.Any(x => x.Task.TaskType == AppTaskType.CheckUpdate) ? AppState.Tasks[AppTaskType.CheckUpdate].GetProcessingText(Loc) : Loc.Get("Settings.CheckUpdate"))
+            </ActionButton>
+        </div>
+    </div>
+
+    <div class="category-card">
+        <span class="category-title">@Loc.Get("Settings.Author")</span>
+
+        <div class="setting-item">
+            <div class="setting-info">
+                <span class="setting-name">@Loc.Get("Settings.Author")</span>
+                <span class="setting-desc">BigBearKing</span>
+            </div>
+            <ActionButton Icon="github" IconSize="22" OnClick="GotoUpstream" />
+        </div>
+        <div class="setting-item">
+            <div class="setting-info">
+                <span class="setting-name">@Loc.Get("About.Maintainer")</span>
+                <span class="setting-desc">QiQiBao</span>
+            </div>
+            <ActionButton Icon="github" IconSize="22" OnClick="GotoFork" />
+        </div>
+    </div>
+
+    @* ★ 源开发者可自由改写/删除的简介块（说明见文件头注释）。 *@
+    <div class="category-card">
+        <span class="category-title">@Loc.Get("About.Title")</span>
+        <div class="setting-item">
+            <div class="setting-info">
+                <span class="setting-desc">@Loc.Get("About.Intro")</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="category-card">
+        <span class="category-title">@Loc.Get("Settings.OpenSourceLicenses")</span>
+
+        <div class="setting-item">
+            <div class="setting-info">
+                <span class="setting-name">@Loc.Get("Settings.OpenSourceLicenses")</span>
+                <span class="setting-desc">@Loc.Get("Settings.OpenSourceLicensesDesc")</span>
+            </div>
+            <ActionButton OnClick="OpenLicenses">
+                @Loc.Get("Common.View")
+            </ActionButton>
+        </div>
+    </div>
+</div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        Loc.OnChange += RefreshUI;
+    }
+
+    public void Dispose()
+    {
+        Loc.OnChange -= RefreshUI;
+    }
+
+    private void RefreshUI() => InvokeAsync(StateHasChanged);
+
+    private string AppVersion => AppInfo.Current.Version.ToString(3);
+
+    private string BuildNumber => typeof(App).Assembly
+        .GetCustomAttributes(false)
+        .OfType<System.Reflection.AssemblyMetadataAttribute>()
+        .FirstOrDefault(metadata => metadata.Key == "ApplicationBuildNumber")?.Value
+        ?? AppInfo.Current.BuildString;
+
+    private async Task CheckUpdateCommand()
+    {
+        await TaskRunner.RunAsync(
+            AppTaskType.CheckUpdate,
+            async _ =>
+            {
+                var updateService = new UpdateService();
+                var result = await updateService.CheckForUpdatesAsync();
+
+                if (result != null && result.IsUpdateAvailable)
+                {
+                    // 提示框必须在主线程弹：这里跑在 TaskRunner 的线程池体里，
+                    // Android 上直接碰 UI 会重入/栈溢出（与设置页同款处理）。
+                    bool wantsToUpdate = await MainThread.InvokeOnMainThreadAsync(async () =>
+                    {
+                        var page = Application.Current?.Windows[0].Page;
+                        if (page is null) return false;
+
+                        return await page.DisplayAlertAsync(
+                            Loc.Get("Settings.NewVersionFound", result.LatestVersion),
+                            Loc.Get("Settings.ReleaseNotes", Terraria_Wiki.Services.AppState.ClipAlertMessage(result.ReleaseNotes)),
+                            Loc.Get("Settings.GoToDownload"),
+                            Loc.Get("Settings.Later"));
+                    });
+
+                    if (wantsToUpdate)
+                    {
+                        await MainThread.InvokeOnMainThreadAsync(() =>
+                            Browser.Default.OpenAsync(result.DownloadUrl, BrowserLaunchMode.SystemPreferred));
+                    }
+                }
+                else
+                {
+                    await MainThread.InvokeOnMainThreadAsync(() =>
+                        AppState.TriggerAlert(Loc.Get("Common.Notice"), Loc.Get("Settings.AlreadyLatest")));
+                }
+            },
+            new AppTaskOptions { ShowError = false });
+    }
+
+    private async Task GotoUpstream()
+    {
+        await Browser.Default.OpenAsync("https://github.com/BigBearKing/terraria-wiki-offline", BrowserLaunchMode.SystemPreferred);
+    }
+
+    private async Task GotoFork()
+    {
+        await Browser.Default.OpenAsync("https://github.com/out123-456/terraria-wiki-offline", BrowserLaunchMode.SystemPreferred);
+    }
+
+    private void OpenLicenses()
+    {
+        AppService.NavigateTo("settings/licenses");
+    }
+}

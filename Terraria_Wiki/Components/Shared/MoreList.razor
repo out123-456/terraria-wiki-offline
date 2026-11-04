@@ -140,8 +140,9 @@
     {
         _ = InvokeAsync(() =>
         {
-            isOpen = AndroidOverlayController.IsRunning;
-            AppState.FloatingSearchOpen = isOpen;
+            // 按钮的 Active 绑的就是 AppState.FloatingSearchOpen，改它一处即可。
+            // （isOpen 是 ToggleFloatingSearch 的局部变量，这里不能碰。）
+            AppState.FloatingSearchOpen = AndroidOverlayController.IsRunning;
             StateHasChanged();
         });
     }

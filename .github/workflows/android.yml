@@ -28,6 +28,9 @@
 #      能直接安装,但每次 runner 都是新 keystore,不能覆盖安装旧版本.
 name: Android APK
 
+# ★ 只手动触发, 不挂 push: 每次推送都自动跑 CI 看起来就像脚本在刷接口,
+#   对账号不友好. 要出包时手动跑:
+#     gh workflow run android.yml --ref <branch> -f aot=false
 on:
   workflow_dispatch:
     inputs:
@@ -35,21 +38,6 @@ on:
         description: "启用 Profiled AOT(体积增大,启动略快)"
         type: boolean
         default: false
-  push:
-    branches:
-      - main
-      - feature/mobile-floating-window
-    tags:
-      - "v*"
-    paths:
-      - "Terraria_Wiki/**"
-      - "global.json"
-      - ".github/workflows/android.yml"
-  pull_request:
-    paths:
-      - "Terraria_Wiki/**"
-      - "global.json"
-      - ".github/workflows/android.yml"
 
 permissions:
   contents: write
